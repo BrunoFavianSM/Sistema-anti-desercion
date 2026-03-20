@@ -2,169 +2,199 @@
 
 ## Introducción
 
-El Sistema de Análisis Predictivo y Gestión "Mente Oasis" es una plataforma integral diseñada para **Mente Oasis Servicios Psicológicos**. Su objetivo es transformar la gestión reactiva basada en archivos sueltos en una gestión proactiva y basada en datos, permitiendo detectar y prevenir la deserción de pacientes (consultas psicológicas) y alumnos (talleres) antes de que ocurra.
+El Sistema de Análisis Predictivo y Gestión "Mente Oasis" es una plataforma integral diseñada para **Mente Oasis Servicios Psicológicos**. Su objetivo principal es prevenir la deserción de pacientes (consultas psicológicas) y alumnos (talleres) mediante análisis predictivo basado en Machine Learning, combinado con un sistema de gestión interna en tiempo real.
 
-El sistema combina un módulo de gestión interna (registro, asistencias, consultas), un pipeline de Big Data/ETL para carga masiva, un motor de Machine Learning para scoring de riesgo de deserción, y un sistema de alertas vía WhatsApp. La seguridad y protección de datos sensibles de salud mental es el pilar central del diseño.
-
-El despliegue inicial es **LOCAL**. La arquitectura debe ser agnóstica a la infraestructura para facilitar una futura migración a la nube.
+El sistema opera inicialmente en entorno local y está diseñado para ser agnóstico a la infraestructura, permitiendo migración futura a la nube. La protección de datos personales y la ética en el uso de IA son pilares no negociables del diseño.
 
 ---
 
 ## Glosario
 
-- **Sistema**: La plataforma completa "Mente Oasis" (frontend + backend + ML).
-- **API**: La capa de backend RESTful (FastAPI o Node.js) que actúa como puente entre el frontend, la base de datos y el motor ML.
-- **Frontend**: La interfaz de usuario construida en ReactJS + TailwindCSS.
-- **BD**: La base de datos Microsoft SQL Server.
-- **Motor_ML**: Los scripts Python que calculan el score de riesgo de deserción.
-- **ETL**: El proceso de extracción, transformación y carga de archivos externos (.xls/.csv).
-- **Persona**: Cualquier individuo registrado en el sistema (paciente, alumno o ambos).
-- **ID_Persona**: Identificador único (UUID) generado por el sistema para procesamiento anónimo. Nunca expone DNI ni nombre real.
-- **PII**: Datos de Identificación Personal (nombres, apellidos, DNI, fecha de nacimiento, dirección, teléfono, email).
-- **Score_Deserción**: Valor numérico entre 0 y 100 que representa la probabilidad de que una Persona abandone sus consultas o taller.
-- **Apoderado**: Padre, madre o tutor legal de una Persona menor de edad.
-- **Taller**: Actividad grupal con sesiones programadas a la que se inscriben Alumnos.
-- **Consulta**: Cita individual de atención psicológica agendada para un Paciente.
-- **Especialista**: Usuario autorizado del sistema (psicólogo/coordinador) con acceso a PII.
-- **WhatsApp_API**: Servicio de mensajería utilizado para enviar alertas de retención.
+- **Sistema**: La plataforma completa "Mente Oasis" incluyendo frontend, backend, base de datos y módulos de ML.
+- **API**: Interfaz RESTful (FastAPI o Node.js) que actúa como capa de comunicación entre el frontend y los servicios de backend.
+- **Frontend**: Interfaz de usuario construida en ReactJS con TailwindCSS, Framer Motion y Sonner para notificaciones.
+- **Base_de_Datos**: Instancia PostgreSQL que almacena todos los datos relacionales del sistema.
+- **ETL**: Proceso de Extracción, Transformación y Carga para archivos externos (.xls, .csv).
+- **Módulo_ML**: Scripts Python que analizan patrones de comportamiento y generan scores de riesgo de deserción.
+- **Paciente**: Persona registrada en el sistema que asiste a consultas psicológicas.
+- **Alumno**: Persona registrada en el sistema que participa en talleres.
+- **Usuario**: Término genérico que engloba tanto a Pacientes como a Alumnos (o ambos simultáneamente).
+- **Especialista**: Profesional autorizado de Mente Oasis con acceso a la interfaz de gestión.
+- **Score_de_Deserción**: Valor numérico entre 0 y 100 que representa la probabilidad de que un Usuario abandone sus sesiones.
+- **PII**: Información de Identificación Personal (nombres, DNI, fecha de nacimiento, dirección, teléfono, email).
+- **UUID**: Identificador único universal utilizado para anonimizar registros en procesos de ML y Big Data.
+- **Taller**: Actividad grupal con fechas definidas, límite de participantes y sesiones programadas.
+- **Consulta**: Cita psicológica individual agendada entre un Paciente y un Especialista.
+- **Apoderado**: Padre, madre o tutor legal de un Usuario menor de edad.
+- **WhatsApp_API**: Servicio de mensajería utilizado para enviar alertas de retención a Usuarios.
+- **Módulo_ETL**: Componente responsable de la limpieza, estandarización y carga de datos externos.
 
 ---
 
 ## Requisitos
 
-### Requisito 1: Registro de Personas
+### Requisito 1: Seguridad y Protección de Datos Personales
 
-**User Story:** Como Especialista, quiero registrar pacientes y alumnos con su información completa, para tener un expediente centralizado y evitar el uso de archivos dispersos.
+**User Story:** Como Especialista, quiero que los datos personales de mis pacientes y alumnos estén protegidos, para cumplir con las normativas de privacidad y mantener la confianza de los usuarios.
 
 #### Criterios de Aceptación
 
-1. THE Sistema SHALL generar un ID_Persona único (UUID) para cada Persona registrada, independiente del DNI.
-2. WHEN el Especialista ingresa la fecha de nacimiento de una Persona, THE Sistema SHALL calcular y almacenar la edad automáticamente.
-3. THE Sistema SHALL permitir asignar a una Persona una categoría de entre: "Paciente", "Alumno" o "Paciente y Alumno".
-4. THE Sistema SHALL permitir asignar a una Persona un estado de entre: "Activo" o "Inactivo".
-5. THE Sistema SHALL registrar los siguientes campos de información general de la Persona: nombres, apellidos, fecha de nacimiento, edad (calculada), lugar de nacimiento, dirección, ciudad, provincia, teléfono, DNI, categoría, estado, género, condición y fecha de inscripción.
-6. THE Sistema SHALL registrar la información médica de la Persona: condición psicológica o médica (con descripción opcional), medicamentos actuales (con descripción opcional) y alergias (con descripción opcional).
-7. THE Sistema SHALL registrar la información del Apoderado de la Persona: nombre, apellidos, fecha de nacimiento, DNI, dirección, ciudad, provincia, teléfono y email.
-8. THE Sistema SHALL requerir la aceptación explícita de dos consentimientos antes de completar el registro: autorización de uso de datos personales conforme a normativa vigente, y aceptación de términos y condiciones del establecimiento.
-9. IF el Especialista intenta completar el registro sin aceptar ambos consentimientos, THEN THE Sistema SHALL bloquear el guardado y mostrar un mensaje indicando los consentimientos pendientes.
-10. IF el Especialista intenta registrar una Persona con un DNI ya existente en la BD, THEN THE Sistema SHALL mostrar un mensaje de error indicando que el DNI ya está registrado.
+1. THE Sistema SHALL encriptar todos los campos PII (nombres, apellidos, DNI, fecha de nacimiento, dirección, teléfono, email) en la Base_de_Datos utilizando encriptación AES-256.
+2. THE Sistema SHALL generar un UUID único por cada Usuario en el momento del registro, desvinculado de cualquier PII.
+3. WHEN el Módulo_ML o el Módulo_ETL procesen datos, THE Sistema SHALL utilizar exclusivamente el UUID del Usuario, sin incluir DNI, nombres ni apellidos.
+4. WHEN un Especialista autenticado acceda al perfil de un Usuario, THE Sistema SHALL desencriptar y mostrar los campos PII únicamente en la interfaz de gestión autorizada.
+5. IF un proceso no autorizado intenta acceder a campos PII, THEN THE Sistema SHALL denegar el acceso y registrar el intento en el log de auditoría.
+6. THE Sistema SHALL mantener un log de auditoría con fecha, hora, acción y UUID del Especialista para toda operación de lectura o modificación de PII.
 
 ---
 
-### Requisito 2: Gestión de Talleres
+### Requisito 2: Autenticación y Control de Acceso
 
-**User Story:** Como Especialista, quiero crear y administrar talleres con sus sesiones programadas, para organizar las actividades grupales y controlar la asistencia.
+**User Story:** Como Especialista, quiero autenticarme de forma segura en el sistema, para garantizar que solo personal autorizado acceda a la información clínica.
 
 #### Criterios de Aceptación
 
-1. THE Sistema SHALL permitir crear un Taller con los siguientes campos: nombre, fecha de inicio, fecha de finalización, límite máximo de usuarios y días de clase con hora de inicio y hora de finalización por cada día.
-2. IF la fecha de finalización de un Taller es anterior a su fecha de inicio, THEN THE Sistema SHALL mostrar un error de validación y no permitir guardar el Taller.
-3. THE Sistema SHALL permitir asignar una Persona con categoría "Alumno" o "Paciente y Alumno" a un Taller existente.
-4. IF el Especialista intenta asignar una Persona a un Taller que ya alcanzó su límite máximo de usuarios, THEN THE Sistema SHALL mostrar un mensaje de error indicando que el Taller está lleno.
-5. WHEN una Persona está asignada a un Taller, THE Sistema SHALL permitir registrar su asistencia por cada sesión programada con uno de los estados: "Presente", "Tardanza" o "Ausente".
-6. THE Sistema SHALL almacenar cada registro de asistencia en la BD asociado al ID_Persona y al identificador del Taller, sin exponer PII al Motor_ML.
+1. WHEN un Especialista ingresa credenciales válidas, THE Sistema SHALL autenticar la sesión y emitir un token JWT con expiración de 8 horas.
+2. IF un Especialista ingresa credenciales inválidas 5 veces consecutivas, THEN THE Sistema SHALL bloquear la cuenta por 15 minutos y notificar al administrador.
+3. WHEN el token JWT de un Especialista expire, THE Sistema SHALL redirigir al Especialista a la pantalla de inicio de sesión.
+4. THE Sistema SHALL implementar roles de acceso diferenciados (Administrador, Especialista) con permisos específicos por módulo.
 
 ---
 
-### Requisito 3: Registro de Consultas
+### Requisito 3: Registro y Gestión de Usuarios (Pacientes y Alumnos)
 
-**User Story:** Como Especialista, quiero agendar y gestionar citas de consulta psicológica, para reemplazar el uso de hojas de cálculo y tener un historial centralizado.
+**User Story:** Como Especialista, quiero registrar y gestionar pacientes y alumnos desde la interfaz, para mantener un expediente digital centralizado y actualizado.
 
 #### Criterios de Aceptación
 
-1. THE Sistema SHALL permitir agendar una Consulta seleccionando una Persona con categoría "Paciente" o "Paciente y Alumno", una fecha, hora de inicio, motivo y estado inicial.
-2. THE Sistema SHALL permitir registrar una hora de fin opcional para la Consulta.
-3. THE Sistema SHALL permitir asignar a una Consulta uno de los siguientes estados: "Pendiente", "Confirmada", "Completa" o "Cancelada".
-4. WHEN el estado de una Consulta cambia, THE Sistema SHALL registrar el cambio en la BD con la marca de tiempo correspondiente.
-5. THE Sistema SHALL almacenar cada Consulta en la BD asociada al ID_Persona, sin exponer PII al Motor_ML.
+1. WHEN un Especialista complete el formulario de registro con los campos obligatorios, THE Sistema SHALL crear un nuevo registro de Usuario en la Base_de_Datos y asignarle un UUID único.
+2. THE Sistema SHALL calcular automáticamente la edad del Usuario a partir de la fecha de nacimiento registrada, actualizándola en cada acceso al perfil.
+3. THE Sistema SHALL aceptar los siguientes campos de información del Usuario: nombres, apellidos, fecha de nacimiento, lugar de nacimiento, dirección, ciudad, provincia, teléfono, DNI, categoría (Paciente / Alumno / Ambos), estado (activo / inactivo), género, condición y fecha de inscripción.
+4. THE Sistema SHALL aceptar los siguientes campos de información médica: indicador de condición psicológica o médica con campo de especificación, indicador de medicación actual con campo de especificación, e indicador de alergias con campo de especificación.
+5. WHEN el Usuario registrado sea menor de edad, THE Sistema SHALL requerir los datos del Apoderado: nombre, apellidos, fecha de nacimiento, DNI, dirección, ciudad, provincia, teléfono y email.
+6. WHEN el Usuario sea menor de edad, THE Sistema SHALL requerir la aceptación explícita de dos checkboxes de autorización por parte del Apoderado antes de completar el registro.
+7. WHEN un Especialista actualice el estado de un Usuario a "inactivo", THE Sistema SHALL conservar el historial completo del Usuario en la Base_de_Datos sin eliminarlo.
+8. IF un DNI ya existe en la Base_de_Datos, THEN THE Sistema SHALL mostrar un mensaje de error indicando que el Usuario ya se encuentra registrado.
 
 ---
 
-### Requisito 4: Carga Masiva de Datos (ETL)
+### Requisito 4: Gestión de Talleres
 
-**User Story:** Como Especialista, quiero cargar archivos históricos en formato .xls o .csv, para migrar datos existentes al sistema sin ingreso manual registro por registro.
+**User Story:** Como Especialista, quiero crear y administrar talleres, para organizar las actividades grupales y controlar la capacidad y el calendario de sesiones.
 
 #### Criterios de Aceptación
 
-1. THE Sistema SHALL aceptar la carga de archivos en formato .xls y .csv desde el Frontend hacia la API.
-2. WHEN un archivo es recibido por la API, THE ETL SHALL limpiar y estandarizar los datos antes de insertarlos en la BD.
-3. WHEN el ETL procesa un archivo, THE ETL SHALL aplicar anonimización asignando un ID_Persona a cada registro antes de almacenarlo, de modo que el PII quede separado del identificador de procesamiento.
-4. IF un archivo cargado contiene filas con formato inválido o campos obligatorios faltantes, THEN THE ETL SHALL registrar cada fila con error en un log de errores y continuar procesando las filas válidas restantes.
-5. WHEN el proceso ETL finaliza, THE API SHALL retornar al Frontend un resumen con el número de registros insertados correctamente y el número de registros con error.
+1. WHEN un Especialista complete el formulario de creación de taller, THE Sistema SHALL registrar el taller en la Base_de_Datos con: nombre, fecha de inicio, fecha de finalización, límite de participantes y días de sesión con hora de inicio y hora de finalización.
+2. IF el número de Alumnos inscritos en un Taller alcanza el límite de participantes definido, THEN THE Sistema SHALL impedir nuevas inscripciones y notificar al Especialista.
+3. WHEN un Especialista asigne un Usuario a un Taller, THE Sistema SHALL verificar que el Usuario tenga categoría "Alumno" o "Ambos" antes de confirmar la inscripción.
+4. THE Sistema SHALL permitir al Especialista editar los datos de un Taller mientras la fecha de inicio no haya sido alcanzada.
+5. WHEN la fecha de finalización de un Taller sea alcanzada, THE Sistema SHALL cambiar automáticamente el estado del Taller a "finalizado".
 
 ---
 
-### Requisito 5: Motor de Machine Learning — Score de Deserción
+### Requisito 5: Registro de Asistencias a Talleres
 
-**User Story:** Como Especialista, quiero que el sistema calcule automáticamente un score de riesgo de deserción por persona, para identificar proactivamente quién necesita intervención.
+**User Story:** Como Especialista, quiero registrar la asistencia de alumnos a cada sesión de taller, para obtener datos precisos que alimenten el análisis de deserción.
 
 #### Criterios de Aceptación
 
-1. THE Motor_ML SHALL analizar los patrones de asistencia a Talleres y Consultas de forma independiente por cada ID_Persona.
-2. THE Motor_ML SHALL generar un Score_Deserción entre 0 y 100 para cada ID_Persona procesada, donde 0 representa riesgo nulo y 100 representa riesgo máximo.
-3. THE Motor_ML SHALL procesar únicamente datos identificados por ID_Persona, sin acceder a campos PII como DNI, nombres, apellidos o fecha de nacimiento.
-4. WHEN el Motor_ML completa el análisis, THE Motor_ML SHALL generar un resultado en formato JSON con el ID_Persona y su Score_Deserción correspondiente.
-5. WHEN el Motor_ML genera el resultado JSON, THE API SHALL almacenar los scores en la BD y enviarlos al Frontend.
-6. THE Sistema SHALL permitir al Especialista ejecutar el Motor_ML manualmente desde el Frontend.
-7. THE Sistema SHALL permitir configurar la ejecución automática periódica del Motor_ML.
-8. IF el Motor_ML encuentra un ID_Persona sin historial de asistencia suficiente para calcular un score, THEN THE Motor_ML SHALL registrar ese ID_Persona con un score nulo y una indicación de "datos insuficientes" en el resultado JSON.
+1. WHEN un Especialista intente registrar asistencia de un Usuario a un Taller, THE Sistema SHALL verificar que el Usuario esté inscrito en dicho Taller antes de permitir el registro.
+2. IF un Usuario no está inscrito en el Taller seleccionado, THEN THE Sistema SHALL mostrar un mensaje de error e impedir el registro de asistencia.
+3. THE Sistema SHALL registrar el estado de asistencia por sesión con los valores: Presente, Tardanza o Ausente.
+4. WHEN se registre una asistencia, THE Sistema SHALL almacenar el UUID del Usuario, el identificador del Taller, la fecha de la sesión y el estado de asistencia.
+5. THE Sistema SHALL permitir al Especialista modificar un registro de asistencia dentro de las 24 horas siguientes a su creación.
 
 ---
 
-### Requisito 6: Sistema de Alertas y Retención
+### Requisito 6: Registro y Gestión de Consultas Psicológicas
 
-**User Story:** Como Especialista, quiero recibir reportes de personas en riesgo de deserción y poder enviarles mensajes de WhatsApp, para intervenir antes de que abandonen su proceso.
+**User Story:** Como Especialista, quiero agendar y gestionar consultas psicológicas, para reemplazar el uso de hojas de cálculo y centralizar el historial clínico en la base de datos.
 
 #### Criterios de Aceptación
 
-1. THE Frontend SHALL mostrar un reporte actualizable con la lista de Personas cuyo Score_Deserción supera un umbral configurable por el Especialista.
-2. THE Sistema SHALL mostrar en el reporte el nombre de la Persona, su categoría (Paciente/Alumno/ambos) y su Score_Deserción, visible únicamente para el Especialista autorizado.
-3. THE Sistema SHALL permitir al Especialista actualizar el reporte de deserción manualmente en cualquier momento.
-4. THE Sistema SHALL permitir enviar un mensaje de WhatsApp a una Persona en riesgo de forma manual, seleccionándola desde el reporte.
-5. THE Sistema SHALL permitir configurar el envío automático de mensajes de WhatsApp cuando el Score_Deserción de una Persona supere el umbral definido.
-6. THE Sistema SHALL permitir al Especialista personalizar la plantilla del mensaje de WhatsApp antes de enviarlo.
-7. WHEN un mensaje de WhatsApp es enviado, THE WhatsApp_API SHALL registrar el envío en la BD con la marca de tiempo, el ID_Persona destinatario y el estado de entrega.
-8. IF el envío de un mensaje de WhatsApp falla, THEN THE Sistema SHALL notificar al Especialista en el Frontend con el motivo del error.
+1. WHEN un Especialista complete el formulario de consulta, THE Sistema SHALL registrar la cita en la Base_de_Datos con: UUID del Paciente, fecha, hora de inicio, hora de fin (opcional), motivo y estado.
+2. THE Sistema SHALL aceptar los siguientes estados de consulta: Pendiente, Confirmada, Completa y Cancelada.
+3. WHEN un Especialista cambie el estado de una Consulta, THE Sistema SHALL registrar la fecha y hora del cambio de estado en el historial de la Consulta.
+4. IF la hora de fin de una Consulta es anterior a la hora de inicio, THEN THE Sistema SHALL mostrar un error de validación e impedir el guardado.
+5. THE Sistema SHALL permitir al Especialista filtrar las Consultas por estado, fecha y UUID del Paciente.
 
 ---
 
-### Requisito 7: Seguridad y Protección de Datos (PII)
+### Requisito 7: Carga Masiva de Datos Históricos (ETL)
 
-**User Story:** Como Especialista, quiero que los datos sensibles de salud mental estén protegidos y anonimizados, para cumplir con la normativa de protección de datos y garantizar la ética en el uso de IA.
+**User Story:** Como Especialista, quiero cargar archivos históricos en formato .xls y .csv, para migrar datos existentes al sistema sin necesidad de ingreso manual.
 
 #### Criterios de Aceptación
 
-1. THE BD SHALL almacenar todos los campos PII (nombres, apellidos, DNI, fecha de nacimiento, dirección, teléfono, email) en formato encriptado.
-2. THE Motor_ML SHALL operar exclusivamente sobre ID_Persona y datos de comportamiento (asistencias, fechas de sesión), sin acceso a ningún campo PII.
-3. THE Sistema SHALL restringir la visualización de PII desencriptado únicamente a usuarios con rol de Especialista autenticado.
-4. THE Sistema SHALL mantener una separación física en la BD entre la tabla de PII encriptado y las tablas de datos de comportamiento usadas por el Motor_ML.
-5. IF un proceso no autorizado intenta acceder a la tabla de PII, THEN THE BD SHALL denegar el acceso y THE API SHALL registrar el intento en un log de auditoría.
-6. THE Sistema SHALL presentar los resultados del Motor_ML como apoyo a la decisión clínica, incluyendo en el Frontend una indicación visible de que el score es orientativo y no reemplaza el criterio del Especialista.
+1. WHEN un Especialista suba un archivo .xls o .csv válido, THE Módulo_ETL SHALL procesar el archivo, estandarizar los formatos de fecha y texto, y cargar los registros en la Base_de_Datos.
+2. IF el archivo subido contiene filas con campos obligatorios vacíos, THEN THE Módulo_ETL SHALL omitir dichas filas, registrarlas en un reporte de errores y continuar procesando las filas válidas.
+3. WHEN el Módulo_ETL complete el procesamiento, THE Sistema SHALL mostrar al Especialista un resumen con: total de registros procesados, total de registros cargados exitosamente y total de registros omitidos con sus motivos.
+4. THE Módulo_ETL SHALL anonimizar los datos antes de enviarlos al Módulo_ML, reemplazando PII por el UUID correspondiente.
+5. IF el archivo subido no tiene el formato .xls o .csv, THEN THE Sistema SHALL rechazar el archivo y mostrar un mensaje de error indicando los formatos aceptados.
 
 ---
 
-### Requisito 8: Seguimiento Histórico y Análisis de Talleres
+### Requisito 8: Análisis Predictivo de Deserción (Machine Learning)
 
-**User Story:** Como Especialista, quiero visualizar el historial de progreso de cada persona y analizar qué talleres tienen mayor deserción, para tomar decisiones informadas sobre la metodología y el contenido.
+**User Story:** Como Especialista, quiero que el sistema analice patrones de asistencia y genere scores de riesgo de deserción, para identificar proactivamente a los usuarios que necesitan intervención.
 
 #### Criterios de Aceptación
 
-1. THE Frontend SHALL mostrar una vista de historial por Persona con el registro cronológico de sus asistencias a Talleres y Consultas.
-2. THE Frontend SHALL mostrar métricas de deserción agregadas por Taller, incluyendo el porcentaje de alumnos que abandonaron cada Taller.
-3. THE Sistema SHALL permitir al Especialista filtrar el historial por rango de fechas, categoría de Persona y nombre de Taller.
-4. WHEN se consulta el historial de una Persona, THE Sistema SHALL recuperar los datos desde la BD usando el ID_Persona y resolver el nombre real únicamente para la visualización en el Frontend para el Especialista autorizado.
+1. WHEN el Módulo_ML ejecute un análisis, THE Módulo_ML SHALL evaluar los patrones de asistencia de cada Usuario de forma independiente y generar un Score_de_Deserción entre 0 y 100 para cada uno.
+2. THE Módulo_ML SHALL procesar únicamente datos anonimizados identificados por UUID, sin acceder a ningún campo PII.
+3. WHEN el análisis ML concluya, THE Módulo_ML SHALL generar un archivo JSON con los resultados y enviarlo a la API para su almacenamiento en la Base_de_Datos y visualización en el Frontend.
+4. THE Sistema SHALL permitir al Especialista ejecutar el análisis ML de forma manual desde la interfaz del Frontend.
+5. WHERE la ejecución automática esté habilitada, THE Sistema SHALL ejecutar el análisis ML según el intervalo de tiempo configurado por el Especialista.
+6. THE Sistema SHALL almacenar el historial de resultados ML en la Base_de_Datos, incluyendo UUID del Usuario, Score_de_Deserción y fecha/hora del análisis.
 
 ---
 
-### Requisito 9: Serialización y Parseo de Datos (Round-Trip)
+### Requisito 9: Sistema de Alertas y Retención
 
-**User Story:** Como desarrollador, quiero que los datos intercambiados entre el Motor_ML, la API y el Frontend sean serializados y parseados de forma confiable, para evitar pérdida o corrupción de información en el pipeline.
+**User Story:** Como Especialista, quiero recibir reportes de usuarios en riesgo de deserción y poder contactarlos vía WhatsApp, para intervenir a tiempo y retener a los pacientes y alumnos.
 
 #### Criterios de Aceptación
 
-1. THE API SHALL serializar los resultados del Motor_ML a formato JSON antes de enviarlos al Frontend.
-2. THE Frontend SHALL parsear el JSON recibido de la API y renderizar los scores sin pérdida de precisión numérica.
-3. FOR ALL resultados JSON válidos generados por el Motor_ML, serializar y luego parsear el resultado SHALL producir un objeto equivalente al original (propiedad round-trip).
-4. THE ETL SHALL serializar los datos procesados a un formato estandarizado antes de insertarlos en la BD.
-5. FOR ALL registros válidos procesados por el ETL, serializar y luego leer desde la BD SHALL producir un registro equivalente al original (propiedad round-trip).
-6. IF el Frontend recibe un JSON con estructura inesperada o campos faltantes, THEN THE Frontend SHALL mostrar un mensaje de error descriptivo sin romper la interfaz.
+1. THE Frontend SHALL mostrar un reporte de Usuarios con Score_de_Deserción superior al umbral configurado por el Especialista, ordenado de mayor a menor riesgo.
+2. WHEN el Especialista actualice el reporte manualmente, THE Sistema SHALL consultar los últimos resultados almacenados en la Base_de_Datos y refrescar la vista en el Frontend.
+3. WHERE la actualización automática esté habilitada, THE Sistema SHALL refrescar el reporte según el intervalo configurado por el Especialista.
+4. WHEN el Especialista seleccione uno o más Usuarios del reporte y confirme el envío, THE Sistema SHALL enviar un mensaje personalizable a través de la WhatsApp_API al número de teléfono registrado de cada Usuario seleccionado.
+5. THE Sistema SHALL permitir al Especialista configurar plantillas de mensajes de retención con variables dinámicas (nombre del Usuario, próxima sesión, etc.).
+6. IF la WhatsApp_API devuelve un error al enviar un mensaje, THEN THE Sistema SHALL registrar el error, notificar al Especialista en la interfaz y no reintentar el envío de forma automática.
+7. THE Sistema SHALL registrar en la Base_de_Datos cada mensaje enviado, incluyendo UUID del Usuario, fecha/hora de envío y estado de entrega reportado por la WhatsApp_API.
+
+---
+
+### Requisito 10: Seguimiento Histórico de Usuarios
+
+**User Story:** Como Especialista, quiero visualizar el historial completo de asistencias, consultas y scores de deserción de cada usuario, para evaluar su progreso y tomar decisiones clínicas informadas.
+
+#### Criterios de Aceptación
+
+1. WHEN un Especialista acceda al perfil de un Usuario, THE Frontend SHALL mostrar el historial de asistencias a Talleres, el historial de Consultas y la evolución del Score_de_Deserción a lo largo del tiempo.
+2. THE Frontend SHALL presentar la evolución del Score_de_Deserción en un gráfico de línea temporal con al menos los últimos 12 análisis registrados.
+3. THE Sistema SHALL permitir al Especialista filtrar el historial por rango de fechas, tipo de actividad (Taller o Consulta) y estado de asistencia.
+
+---
+
+### Requisito 11: Análisis de Rendimiento de Talleres
+
+**User Story:** Como Especialista, quiero identificar qué talleres presentan mayor índice de deserción, para mejorar su contenido, metodología o frecuencia.
+
+#### Criterios de Aceptación
+
+1. THE Frontend SHALL mostrar un reporte de Talleres ordenado por tasa de deserción promedio, calculada como el porcentaje de Alumnos con Score_de_Deserción superior al umbral configurado respecto al total de inscritos.
+2. WHEN un Especialista seleccione un Taller del reporte, THE Frontend SHALL mostrar el detalle de asistencias por sesión y la distribución de scores de deserción de sus Alumnos.
+3. THE Sistema SHALL incluir en el reporte de Talleres únicamente aquellos con al menos 3 sesiones registradas.
+
+---
+
+### Requisito 12: Agnóstico a la Infraestructura
+
+**User Story:** Como administrador técnico, quiero que el sistema sea desplegable localmente y migrable a la nube sin cambios en el código de negocio, para garantizar flexibilidad operativa a largo plazo.
+
+#### Criterios de Aceptación
+
+1. THE Sistema SHALL externalizar toda configuración de conexión a la Base_de_Datos, rutas de API y credenciales de servicios externos en variables de entorno, sin valores hardcodeados en el código fuente.
+2. THE Sistema SHALL incluir archivos de configuración de contenedores (Docker Compose) que permitan levantar todos los servicios del sistema en un entorno local con un único comando.
+3. THE API SHALL exponer endpoints documentados mediante OpenAPI/Swagger para facilitar la integración con cualquier infraestructura de despliegue.

@@ -1,4 +1,4 @@
-# Sistema de Análisis Predictivo y Gestión - Mente Oasis
+﻿# Sistema de Análisis Predictivo y Gestión - Mente Oasis
 
 ## Declaración de Nivel y Seguridad
 Este es un proyecto de **Alto Nivel** en ingeniería de software y ciencia de datos. Debido a la naturaleza de la información tratada (**Salud Mental**), la **Seguridad y Protección de Datos Personales** no son opcionales, sino el pilar central del desarrollo. 
@@ -19,7 +19,7 @@ Tener en cuenta que no esta confirmado al 100% si se trabajara con AWS así que 
 El sistema se compone de los siguientes elementos tecnológicos:
 
 * **Interfaz (Frontend):** ReactJS con TailwindCSS para el diseño, Framer Motion para animaciones y Sonner/Sileo para notificaciones.
-* **Gestión de Datos (Backend):** API RESTful (FastAPI o Node.js) que actúa como puente de comunicación.
+* **Gestión de Datos (Backend):** API RESTful (Node.js) que actúa como puente de comunicación.
 * **Base de Datos:** Microsoft SQL Server para el almacenamiento relacional de pacientes, alumnos y asistencias.
 * **Modelado de Datos (Big Data):** Procesos de carga y limpieza (ETL) para archivos externos (.xls, .csv).
 * **Cerebro Predictivo (Machine Learning):** Scripts de Python que analizan patrones de comportamiento y generan *scores* de riesgo.
@@ -166,3 +166,5 @@ Con esto se evitaria la desercion de los usuarios de meteoasis.
 La implementación de este sistema permitirá a **Mente Oasis** pasar de una gestión reactiva basada en archivos sueltos a una **gestión proactiva y basada en datos**, asegurando que ningún paciente o alumno abandone su proceso sin una intervención previa del especialista.
 
 > **Nota de Implementación:** El despliegue inicial es **LOCAL**. La migración a la nube (AWS) es una fase posterior; por lo tanto, el sistema debe ser agnóstico a la infraestructura (fácil de migrar).
+
+

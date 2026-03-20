@@ -1,71 +1,73 @@
-# Documento de Diseño — Sistema Mente Oasis
+﻿# Documento de Diseño Técnico — Mente Oasis Sistema
 
-## Visión General
+## Descripción General
 
-El Sistema Mente Oasis es una plataforma de gestión y análisis predictivo para **Mente Oasis Servicios Psicológicos**. Reemplaza el flujo de trabajo basado en archivos dispersos (Excel, hojas sueltas) por una plataforma centralizada que combina:
+El Sistema de Análisis Predictivo y Gestión "Mente Oasis" es una plataforma integral para **Mente Oasis Servicios Psicológicos** que combina gestión clínica en tiempo real con análisis predictivo de deserción basado en Machine Learning. El sistema protege datos sensibles de salud mental mediante encriptación AES-256 y anonimización por UUID, opera inicialmente en entorno local con Docker Compose, y está diseñado para migración futura a la nube sin cambios en el código de negocio.
 
-- Gestión interna de personas (pacientes/alumnos), talleres y consultas
-- Pipeline ETL para carga masiva de datos históricos (.xls/.csv)
-- Motor de Machine Learning para scoring de riesgo de deserción
-- Sistema de alertas vía WhatsApp para intervención proactiva
+### Objetivos de Diseño
 
-El despliegue inicial es **local**. La arquitectura es agnóstica a la infraestructura para facilitar migración futura a la nube (AWS).
-
-La protección de datos de salud mental es el pilar central: los datos PII se almacenan encriptados y el Motor ML opera exclusivamente sobre identificadores anónimos (UUID).
+- **Seguridad primero**: PII encriptado en reposo; ML opera exclusivamente sobre UUIDs.
+- **Separación de responsabilidades**: Frontend, API, Base de Datos, ETL y ML son capas independientes.
+- **Agnóstico a infraestructura**: Toda configuración externalizada en variables de entorno; contenedores Docker.
+- **Ética en IA**: El score de deserción apoya al especialista, no reemplaza el criterio clínico.
 
 ---
 
 ## Arquitectura
 
-### Diagrama de Componentes
+### Diagrama de Arquitectura General
 
 ```mermaid
 graph TB
     subgraph Frontend["Frontend (ReactJS + TailwindCSS)"]
-        UI_Registro["Registro de Personas"]
-        UI_Talleres["Gestión de Talleres"]
-        UI_Consultas["Gestión de Consultas"]
-        UI_ETL["Carga Masiva (ETL)"]
-        UI_Alertas["Reporte de Deserción / Alertas"]
-        UI_Historial["Historial y Análisis"]
+        UI[Interfaz de Usuario]
+        Charts[Gráficos / Reportes]
+        Forms[Formularios de Gestión]
     end
 
-    subgraph API["API RESTful (FastAPI)"]
-        Router["Routers"]
-        Auth["Autenticación / RBAC"]
-        ETL_Service["Servicio ETL"]
-        ML_Trigger["Trigger ML"]
-        WA_Service["Servicio WhatsApp"]
-        Audit["Log de Auditoría"]
+    subgraph API["Backend (Node.js)"]
+        Auth[Módulo Auth / JWT]
+        UserMgmt[Gestión de Usuarios]
+        WorkshopMgmt[Gestión de Talleres]
+        ConsultMgmt[Gestión de Consultas]
+        ETLCtrl[Controlador ETL]
+        MLCtrl[Controlador ML]
+        AlertCtrl[Controlador Alertas]
+        AuditLog[Log de Auditoría]
     end
 
-    subgraph DB["Base de Datos (SQL Server)"]
-        PII_Table["Tabla PII (encriptada)"]
-        Personas_Table["Tabla Personas (ID_Persona, comportamiento)"]
-        Talleres_Table["Tabla Talleres"]
-        Asistencias_Table["Tabla Asistencias"]
-        Consultas_Table["Tabla Consultas"]
-        Scores_Table["Tabla Scores_Deserción"]
-        WA_Log["Tabla Log_WhatsApp"]
-        Audit_Log["Tabla Log_Auditoría"]
+    subgraph DataLayer["Capa de Datos"]
+        PG[(PostgreSQL + AES-256)]
     end
 
-    subgraph ML["Motor ML (Python)"]
-        Feature_Eng["Feature Engineering"]
-        Model["Modelo de Scoring"]
-        JSON_Output["Salida JSON"]
+    subgraph Processing["Procesamiento"]
+        ETL[Módulo ETL - pandas/openpyxl]
+        ML[Módulo ML - scikit-learn]
     end
 
-    subgraph WA["WhatsApp API"]
-        WA_Gateway["Gateway de Mensajería"]
+    subgraph External["Servicios Externos"]
+        WA[WhatsApp API - Twilio/Meta]
     end
 
-    Frontend --> API
-    API --> DB
-    API --> ML
-    ML --> DB
-    API --> WA
-    WA --> WA_Gateway
+    UI --> Auth
+    Forms --> UserMgmt
+    Forms --> WorkshopMgmt
+    Forms --> ConsultMgmt
+    Forms --> ETLCtrl
+    Charts --> MLCtrl
+    Charts --> AlertCtrl
+
+    Auth --> PG
+    UserMgmt --> PG
+    WorkshopMgmt --> PG
+    ConsultMgmt --> PG
+    ETLCtrl --> ETL
+    ETL --> PG
+    MLCtrl --> ML
+    ML --> PG
+    AlertCtrl --> WA
+    AlertCtrl --> PG
+    AuditLog --> PG
 ```
 
 ### Flujo de Datos Principal
@@ -73,100 +75,153 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant E as Especialista
-    participant FE as Frontend
-    participant API as API (FastAPI)
-    participant DB as SQL Server
-    participant ML as Motor ML
+    participant FE as Frontend (React)
+    participant API as Node.js
+    participant DB as PostgreSQL
+    participant ML as Módulo ML
     participant WA as WhatsApp API
 
-    E->>FE: Registra Persona / carga archivo
-    FE->>API: POST /personas o POST /etl/upload
-    API->>DB: Encripta PII → tabla PII; inserta ID_Persona → tabla comportamiento
+    E->>FE: Registra paciente/alumno
+    FE->>API: POST /users (datos PII + info médica)
+    API->>API: Genera UUID, encripta PII (AES-256)
+    API->>DB: INSERT usuario (PII encriptado + UUID)
+    API->>DB: INSERT log auditoría
+
     E->>FE: Ejecuta análisis ML
     FE->>API: POST /ml/run
-    API->>ML: Invoca script Python con datos anónimos
-    ML->>DB: Lee asistencias/consultas por ID_Persona
-    ML->>DB: Escribe scores JSON
-    ML-->>API: Retorna JSON {ID_Persona, Score_Deserción}
-    API-->>FE: Scores actualizados
-    FE-->>E: Muestra reporte de deserción
+    API->>DB: SELECT asistencias (solo UUID)
+    API->>ML: Datos anonimizados (UUID)
+    ML->>ML: Calcula Score_Deserción 0-100
+    ML->>API: JSON resultados
+    API->>DB: INSERT resultados ML
+    API->>FE: Reporte de riesgo
+
     E->>FE: Envía alerta WhatsApp
-    FE->>API: POST /alertas/whatsapp
-    API->>WA: Envía mensaje
-    WA-->>API: Estado de entrega
-    API->>DB: Registra envío en Log_WhatsApp
+    FE->>API: POST /alerts/send
+    API->>DB: SELECT teléfono (desencripta PII)
+    API->>WA: Envía mensaje personalizado
+    WA->>API: Estado de entrega
+    API->>DB: INSERT log mensaje
 ```
 
 ### Decisiones de Diseño
 
 | Decisión | Elección | Justificación |
 |---|---|---|
-| Backend | FastAPI (Python) | Integración nativa con scripts ML Python; alto rendimiento async; tipado con Pydantic |
-| Base de datos | Microsoft SQL Server | Requisito del cliente; soporte robusto para encriptación TDE/columnar |
-| Encriptación PII | AES-256 a nivel de columna (SQL Server Always Encrypted) | Protección en reposo; el motor ML nunca ve texto plano |
-| Separación PII / comportamiento | Tablas físicamente separadas | El Motor ML solo tiene permisos sobre tablas de comportamiento |
-| Frontend | ReactJS + TailwindCSS | Requisito del cliente |
-| ML | Scripts Python (scikit-learn / XGBoost) | Flexibilidad; integración directa con FastAPI |
-| Serialización | JSON (Pydantic models) | Estándar; validación automática; round-trip garantizado |
+| Backend | Node.js (JavaScript) | Ecosistema JavaScript/TypeScript; integración con frontend; OpenAPI con herramientas Node |
+| Base de datos | PostgreSQL | Soporte nativo para extensiones de encriptación; robustez relacional; migrable a RDS |
+| Encriptación PII | AES-256 a nivel aplicación (pgcrypto) | Control explícito sobre qué campos se encriptan; compatible con anonimización UUID |
+| ML | scikit-learn | Madurez, documentación, compatibilidad con pandas; suficiente para análisis de deserción |
+| ETL | pandas + openpyxl | Estándar de facto para .xls/.csv en Python |
+| WhatsApp | Twilio o Meta Cloud API | Ambas soportan mensajería programática; configurable por variable de entorno |
+| Contenedores | Docker Compose | Despliegue local con un comando; migrable a ECS/Kubernetes sin cambios de código |
 
 ---
 
 ## Componentes e Interfaces
 
-### API — Endpoints Principales
+### Estructura de Directorios
 
-#### Personas
+```
+mente-oasis/
+├── frontend/                    # ReactJS + TailwindCSS
+│   ├── src/
+│   │   ├── components/          # Componentes reutilizables
+│   │   ├── pages/               # Vistas principales
+│   │   ├── hooks/               # Custom hooks
+│   │   ├── services/            # Clientes API (axios)
+│   │   └── store/               # Estado global (Zustand/Context)
+│   └── Dockerfile
+├── backend/                     # Node.js
+│   ├── app/
+│   │   ├── api/                 # Routers Node.js
+│   │   │   ├── auth.py
+│   │   │   ├── users.py
+│   │   │   ├── workshops.py
+│   │   │   ├── consultations.py
+│   │   │   ├── etl.py
+│   │   │   ├── ml.py
+│   │   │   └── alerts.py
+│   │   ├── core/
+│   │   │   ├── security.py      # JWT + AES-256
+│   │   │   ├── config.py        # Variables de entorno
+│   │   │   └── audit.py         # Log de auditoría
+│   │   ├── models/              # Modelos SQLAlchemy
+│   │   ├── schemas/             # Schemas Pydantic
+│   │   ├── services/            # Lógica de negocio
+│   │   └── main.py
+│   ├── etl/
+│   │   └── processor.py         # pandas + openpyxl
+│   ├── ml/
+│   │   └── desertion_model.py   # scikit-learn
+│   ├── requirements.txt
+│   └── Dockerfile
+├── docker-compose.yml
+└── .env.example
+```
+
+### Endpoints de la API (Node.js)
+
+#### Autenticación
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/v1/personas` | Registrar nueva Persona |
-| GET | `/api/v1/personas/{id_persona}` | Obtener Persona (PII desencriptado, solo Especialista) |
-| PUT | `/api/v1/personas/{id_persona}` | Actualizar datos de Persona |
-| GET | `/api/v1/personas/{id_persona}/historial` | Historial de asistencias y consultas |
+| POST | `/auth/login` | Autenticación, retorna JWT |
+| POST | `/auth/logout` | Invalida sesión |
+| POST | `/auth/refresh` | Renueva token JWT |
+
+#### Usuarios
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/users` | Crear usuario (paciente/alumno/ambos) |
+| GET | `/users/{uuid}` | Obtener perfil (desencripta PII) |
+| PUT | `/users/{uuid}` | Actualizar usuario |
+| GET | `/users` | Listar usuarios (sin PII) |
+| GET | `/users/{uuid}/history` | Historial completo del usuario |
 
 #### Talleres
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/v1/talleres` | Crear Taller |
-| GET | `/api/v1/talleres` | Listar Talleres |
-| POST | `/api/v1/talleres/{id_taller}/alumnos` | Asignar Persona a Taller |
-| POST | `/api/v1/talleres/{id_taller}/asistencias` | Registrar asistencia de sesión |
+| POST | `/workshops` | Crear taller |
+| GET | `/workshops` | Listar talleres |
+| PUT | `/workshops/{id}` | Editar taller (si no ha iniciado) |
+| POST | `/workshops/{id}/enroll` | Inscribir usuario |
+| POST | `/workshops/{id}/attendance` | Registrar asistencia |
+| PUT | `/workshops/{id}/attendance/{record_id}` | Modificar asistencia (24h) |
 
 #### Consultas
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/v1/consultas` | Agendar Consulta |
-| PUT | `/api/v1/consultas/{id_consulta}/estado` | Cambiar estado de Consulta |
+| POST | `/consultations` | Agendar consulta |
+| GET | `/consultations` | Listar consultas (filtros: estado, fecha, uuid) |
+| PUT | `/consultations/{id}/status` | Cambiar estado |
 
 #### ETL
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/v1/etl/upload` | Cargar archivo .xls/.csv |
-| GET | `/api/v1/etl/jobs/{job_id}` | Consultar resultado del proceso ETL |
+| POST | `/etl/upload` | Subir archivo .xls/.csv |
+| GET | `/etl/jobs/{job_id}` | Estado del proceso ETL |
 
 #### ML
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/v1/ml/run` | Ejecutar Motor ML manualmente |
-| GET | `/api/v1/ml/scores` | Obtener scores actuales |
-| PUT | `/api/v1/ml/schedule` | Configurar ejecución automática |
+| POST | `/ml/run` | Ejecutar análisis manual |
+| GET | `/ml/results` | Obtener últimos resultados |
+| GET | `/ml/config` | Obtener configuración de ejecución automática |
+| PUT | `/ml/config` | Actualizar intervalo de ejecución automática |
 
 #### Alertas
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/v1/alertas/reporte` | Reporte de personas en riesgo (umbral configurable) |
-| POST | `/api/v1/alertas/whatsapp` | Enviar mensaje WhatsApp manual |
-| PUT | `/api/v1/alertas/config` | Configurar umbral y automatización |
+| GET | `/alerts/report` | Reporte de usuarios en riesgo |
+| POST | `/alerts/send` | Enviar mensajes WhatsApp |
+| GET | `/alerts/templates` | Listar plantillas de mensajes |
+| POST | `/alerts/templates` | Crear plantilla |
 
-### Motor ML — Interfaz
-
-El Motor ML es invocado por la API como subproceso Python o mediante una cola de tareas (Celery/APScheduler para ejecución periódica).
-
-**Entrada:** Consulta SQL sobre tablas de comportamiento (sin PII)
-**Salida:** Array JSON `[{ "id_persona": "uuid", "score_desercion": 75.3, "estado": "calculado" | "datos_insuficientes" }]`
-
-### Servicio WhatsApp
-
-Integración con la API de WhatsApp Business (Meta) o proveedor alternativo (Twilio). La API actúa como intermediario: resuelve el número de teléfono desde la tabla PII encriptada, envía el mensaje y registra el resultado.
+#### Talleres — Análisis
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/workshops/analytics` | Reporte de talleres por tasa de deserción |
+| GET | `/workshops/{id}/analytics` | Detalle de asistencias y scores de un taller |
 
 ---
 
@@ -176,420 +231,428 @@ Integración con la API de WhatsApp Business (Meta) o proveedor alternativo (Twi
 
 ```mermaid
 erDiagram
-    PERSONAS_PII {
-        uniqueidentifier id_persona PK
-        varbinary nombres_enc
-        varbinary apellidos_enc
-        varbinary dni_enc
-        varbinary fecha_nacimiento_enc
-        varbinary lugar_nacimiento_enc
-        varbinary direccion_enc
-        varbinary ciudad_enc
-        varbinary provincia_enc
-        varbinary telefono_enc
-        varbinary email_enc
-    }
-
-    PERSONAS {
-        uniqueidentifier id_persona PK
-        int edad
+    USERS {
+        uuid id PK
+        bytea nombres_enc
+        bytea apellidos_enc
+        bytea dni_enc
+        bytea fecha_nacimiento_enc
+        bytea lugar_nacimiento_enc
+        bytea direccion_enc
+        bytea ciudad_enc
+        bytea provincia_enc
+        bytea telefono_enc
+        bytea email_enc
         varchar categoria
         varchar estado
         varchar genero
         varchar condicion
         date fecha_inscripcion
-        bit condicion_psicologica
-        varchar condicion_psicologica_desc
-        bit medicamentos
-        varchar medicamentos_desc
-        bit alergias
-        varchar alergias_desc
-        bit consentimiento_datos
-        bit consentimiento_terminos
-        datetime created_at
-        datetime updated_at
+        boolean tiene_condicion_psicologica
+        text condicion_psicologica_detalle
+        boolean toma_medicamento
+        text medicamento_detalle
+        boolean tiene_alergia
+        text alergia_detalle
+        timestamp created_at
+        timestamp updated_at
     }
 
-    APODERADOS {
-        int id_apoderado PK
-        uniqueidentifier id_persona FK
-        varbinary nombre_enc
-        varbinary apellidos_enc
-        varbinary fecha_nacimiento_enc
-        varbinary dni_enc
-        varbinary direccion_enc
-        varbinary ciudad_enc
-        varbinary provincia_enc
-        varbinary telefono_enc
-        varbinary email_enc
+    GUARDIANS {
+        uuid id PK
+        uuid user_id FK
+        bytea nombre_enc
+        bytea apellidos_enc
+        bytea fecha_nacimiento_enc
+        bytea dni_enc
+        bytea direccion_enc
+        bytea ciudad_enc
+        bytea provincia_enc
+        bytea telefono_enc
+        bytea email_enc
+        boolean autoriza_datos
+        boolean acepta_terminos
+        timestamp created_at
     }
 
-    TALLERES {
-        int id_taller PK
+    WORKSHOPS {
+        int id PK
         varchar nombre
         date fecha_inicio
-        date fecha_fin
-        int limite_usuarios
-        datetime created_at
+        date fecha_finalizacion
+        int limite_participantes
+        varchar estado
+        timestamp created_at
     }
 
-    TALLER_DIAS {
-        int id_dia PK
-        int id_taller FK
+    WORKSHOP_SESSIONS {
+        int id PK
+        int workshop_id FK
         varchar dia_semana
         time hora_inicio
         time hora_fin
+        date fecha_sesion
     }
 
-    TALLER_ALUMNOS {
+    WORKSHOP_ENROLLMENTS {
         int id PK
-        int id_taller FK
-        uniqueidentifier id_persona FK
-        datetime fecha_asignacion
+        int workshop_id FK
+        uuid user_id FK
+        timestamp enrolled_at
     }
 
-    ASISTENCIAS {
-        int id_asistencia PK
-        int id_taller FK
-        uniqueidentifier id_persona FK
+    ATTENDANCE_RECORDS {
+        int id PK
+        int workshop_id FK
+        uuid user_id FK
+        int session_id FK
         date fecha_sesion
         varchar estado
-        datetime created_at
+        timestamp created_at
+        timestamp updated_at
     }
 
-    CONSULTAS {
-        int id_consulta PK
-        uniqueidentifier id_persona FK
+    CONSULTATIONS {
+        int id PK
+        uuid patient_id FK
         date fecha
         time hora_inicio
         time hora_fin
-        varchar motivo
+        text motivo
         varchar estado
-        datetime created_at
-        datetime updated_at
+        timestamp created_at
+        timestamp updated_at
     }
 
-    CONSULTA_ESTADOS_LOG {
+    CONSULTATION_STATUS_HISTORY {
         int id PK
-        int id_consulta FK
+        int consultation_id FK
         varchar estado_anterior
         varchar estado_nuevo
-        datetime timestamp
+        timestamp changed_at
+        uuid changed_by FK
     }
 
-    SCORES_DESERCION {
-        int id_score PK
-        uniqueidentifier id_persona FK
-        float score
-        varchar estado_calculo
-        datetime calculado_at
+    ML_RESULTS {
+        int id PK
+        uuid user_id FK
+        float score_desercion
+        timestamp analyzed_at
+        varchar model_version
     }
 
-    LOG_WHATSAPP {
-        int id_log PK
-        uniqueidentifier id_persona FK
+    ALERT_MESSAGES {
+        int id PK
+        uuid user_id FK
+        text mensaje_enviado
         varchar estado_entrega
-        text mensaje
-        datetime enviado_at
+        timestamp sent_at
+        text error_detalle
     }
 
-    LOG_AUDITORIA {
-        int id_audit PK
-        varchar tabla_accedida
+    ALERT_TEMPLATES {
+        int id PK
+        varchar nombre
+        text contenido
+        timestamp created_at
+    }
+
+    AUDIT_LOG {
+        int id PK
+        uuid specialist_id FK
         varchar accion
-        varchar usuario_api
+        varchar tabla_afectada
+        uuid registro_uuid
+        timestamp timestamp
         varchar ip_origen
-        datetime timestamp
     }
 
-    PERSONAS_PII ||--|| PERSONAS : "id_persona"
-    PERSONAS ||--o| APODERADOS : "tiene"
-    PERSONAS ||--o{ TALLER_ALUMNOS : "inscrito en"
-    TALLERES ||--o{ TALLER_ALUMNOS : "contiene"
-    TALLERES ||--o{ TALLER_DIAS : "tiene"
-    TALLERES ||--o{ ASISTENCIAS : "registra"
-    PERSONAS ||--o{ ASISTENCIAS : "tiene"
-    PERSONAS ||--o{ CONSULTAS : "agenda"
-    CONSULTAS ||--o{ CONSULTA_ESTADOS_LOG : "historial"
-    PERSONAS ||--o{ SCORES_DESERCION : "tiene"
-    PERSONAS ||--o{ LOG_WHATSAPP : "recibe"
+    SPECIALISTS {
+        uuid id PK
+        varchar username
+        varchar password_hash
+        varchar rol
+        boolean activo
+        int intentos_fallidos
+        timestamp bloqueado_hasta
+        timestamp created_at
+    }
+
+    USERS ||--o| GUARDIANS : "tiene apoderado"
+    USERS ||--o{ WORKSHOP_ENROLLMENTS : "inscrito en"
+    WORKSHOPS ||--o{ WORKSHOP_ENROLLMENTS : "tiene inscritos"
+    WORKSHOPS ||--o{ WORKSHOP_SESSIONS : "tiene sesiones"
+    USERS ||--o{ ATTENDANCE_RECORDS : "tiene asistencias"
+    WORKSHOPS ||--o{ ATTENDANCE_RECORDS : "registra asistencias"
+    WORKSHOP_SESSIONS ||--o{ ATTENDANCE_RECORDS : "corresponde a sesión"
+    USERS ||--o{ CONSULTATIONS : "tiene consultas"
+    USERS ||--o{ ML_RESULTS : "tiene scores"
+    USERS ||--o{ ALERT_MESSAGES : "recibe alertas"
+    CONSULTATIONS ||--o{ CONSULTATION_STATUS_HISTORY : "tiene historial"
+    SPECIALISTS ||--o{ AUDIT_LOG : "genera auditoría"
 ```
 
-### Esquema de Separación PII / Comportamiento
+### Notas sobre Encriptación
 
-La separación física es la garantía de privacidad del Motor ML:
+- Los campos `*_enc` son de tipo `bytea` y se encriptan/desencriptan a nivel de aplicación usando la extensión `pgcrypto` de PostgreSQL con AES-256.
+- La clave de encriptación se almacena exclusivamente en variables de entorno (`ENCRYPTION_KEY`), nunca en el código fuente.
+- El módulo ML y ETL **nunca** reciben campos `*_enc`; solo operan con el `uuid` del usuario.
 
-- **`PERSONAS_PII`**: Todos los campos de identificación personal, almacenados como `varbinary` encriptados con SQL Server Always Encrypted. Solo accesible por la API con el certificado de encriptación.
-- **`PERSONAS`**: Datos de comportamiento y metadatos no-PII (edad calculada, categoría, estado, consentimientos). Esta tabla es la fuente del Motor ML.
-- **`APODERADOS`**: PII del apoderado, también encriptado.
-
-El Motor ML tiene permisos de lectura **únicamente** sobre: `PERSONAS`, `ASISTENCIAS`, `CONSULTAS`, `TALLER_ALUMNOS`. No tiene permisos sobre `PERSONAS_PII` ni `APODERADOS`.
-
-### Modelos Pydantic (API)
+### Estrategia de Encriptación AES-256
 
 ```python
-# Modelo de creación de Persona (entrada API)
-class PersonaCreate(BaseModel):
-    nombres: str
-    apellidos: str
-    fecha_nacimiento: date
-    lugar_nacimiento: str
-    direccion: str
-    ciudad: str
-    provincia: str
-    telefono: str
-    dni: str
-    categoria: Literal["Paciente", "Alumno", "Paciente y Alumno"]
-    estado: Literal["Activo", "Inactivo"]
-    genero: str
-    condicion: Optional[str]
-    fecha_inscripcion: date
-    condicion_psicologica: bool
-    condicion_psicologica_desc: Optional[str]
-    medicamentos: bool
-    medicamentos_desc: Optional[str]
-    alergias: bool
-    alergias_desc: Optional[str]
-    apoderado: Optional[ApoderadoCreate]
-    consentimiento_datos: bool
-    consentimiento_terminos: bool
+# backend/app/core/security.py (esquema conceptual)
+from cryptography.fernet import Fernet
+import os
 
-# Modelo de score ML (salida Motor ML → API)
-class ScoreDesercion(BaseModel):
-    id_persona: UUID
-    score: Optional[float]  # None si datos insuficientes
-    estado_calculo: Literal["calculado", "datos_insuficientes"]
+ENCRYPTION_KEY = os.environ["ENCRYPTION_KEY"]
 
-# Modelo de resultado ETL
-class ETLResult(BaseModel):
-    job_id: str
-    registros_insertados: int
-    registros_con_error: int
-    errores: List[ETLError]
+def encrypt_pii(value: str) -> bytes:
+    f = Fernet(ENCRYPTION_KEY)
+    return f.encrypt(value.encode())
+
+def decrypt_pii(encrypted: bytes) -> str:
+    f = Fernet(ENCRYPTION_KEY)
+    return f.decrypt(encrypted).decode()
 ```
-
 
 ---
 
 ## Propiedades de Corrección
 
-*Una propiedad es una característica o comportamiento que debe mantenerse verdadero en todas las ejecuciones válidas del sistema — esencialmente, una declaración formal sobre lo que el sistema debe hacer. Las propiedades sirven como puente entre las especificaciones legibles por humanos y las garantías de corrección verificables por máquina.*
+*Una propiedad es una característica o comportamiento que debe mantenerse verdadero en todas las ejecuciones válidas del sistema — esencialmente, una declaración formal sobre lo que el sistema debe hacer. Las propiedades sirven como puente entre las especificaciones legibles por humanos y las garantías de corrección verificables por máquinas.*
 
 ---
 
-### Propiedad 1: Round-trip de registro de Persona
+### Propiedad 1: Round-trip de encriptación PII
 
-*Para cualquier* conjunto válido de datos de Persona (incluyendo información general, médica y del apoderado), crear la Persona y luego recuperarla por su ID_Persona debe producir un objeto equivalente al original, con todos los campos presentes y sin pérdida de datos.
+*Para cualquier* valor de campo PII (nombre, apellido, DNI, fecha de nacimiento, dirección, teléfono, email), encriptarlo con AES-256 y luego desencriptarlo debe producir el valor original idéntico. Además, el valor almacenado en la base de datos no debe ser igual al valor en texto plano.
 
-**Valida: Requisitos 1.1, 1.5, 1.6, 1.7**
-
----
-
-### Propiedad 2: Cálculo correcto de edad
-
-*Para cualquier* fecha de nacimiento válida, la edad calculada y almacenada por el sistema debe ser igual a la diferencia en años completos entre la fecha de nacimiento y la fecha actual.
-
-**Valida: Requisito 1.2**
+**Valida: Requisitos 1.1, 1.4**
 
 ---
 
-### Propiedad 3: Validación de enumeraciones de Persona
+### Propiedad 2: Unicidad de UUID por usuario
 
-*Para cualquier* valor de categoría fuera del conjunto `{"Paciente", "Alumno", "Paciente y Alumno"}` o cualquier valor de estado fuera del conjunto `{"Activo", "Inactivo"}`, el sistema debe rechazar el registro y retornar un error de validación.
+*Para cualquier* conjunto de N registros de usuario creados en el sistema, todos los UUIDs asignados deben ser distintos entre sí.
 
-**Valida: Requisitos 1.3, 1.4**
-
----
-
-### Propiedad 4: Obligatoriedad de consentimientos
-
-*Para cualquier* intento de registro de Persona donde al menos uno de los dos consentimientos (`consentimiento_datos` o `consentimiento_terminos`) sea `false`, el sistema debe bloquear el guardado y retornar un mensaje indicando los consentimientos pendientes.
-
-**Valida: Requisitos 1.8, 1.9**
+**Valida: Requisitos 1.2, 3.1**
 
 ---
 
-### Propiedad 5: Unicidad de DNI
+### Propiedad 3: Anonimización en procesamiento ML/ETL
 
-*Para cualquier* par de intentos de registro con el mismo DNI, el segundo intento debe ser rechazado con un mensaje de error indicando que el DNI ya está registrado, y la base de datos debe contener exactamente un registro con ese DNI.
+*Para cualquier* payload enviado al Módulo_ML o al Módulo_ETL, el objeto de datos no debe contener ningún campo PII (nombres, apellidos, DNI, fecha de nacimiento, dirección, teléfono, email); solo debe contener el UUID del usuario y datos de comportamiento (asistencias, fechas de sesión).
 
-**Valida: Requisito 1.10**
-
----
-
-### Propiedad 6: Round-trip de creación de Taller
-
-*Para cualquier* conjunto válido de datos de Taller (nombre, fechas, límite, días con horarios), crear el Taller y luego recuperarlo por su identificador debe producir un objeto equivalente al original.
-
-**Valida: Requisito 2.1**
+**Valida: Requisitos 1.3, 7.4, 8.2**
 
 ---
 
-### Propiedad 7: Validación de fechas de Taller
+### Propiedad 4: Denegación de acceso a PII sin autenticación
 
-*Para cualquier* Taller donde la fecha de finalización sea anterior o igual a la fecha de inicio, el sistema debe rechazar la creación con un error de validación y no persistir el registro.
+*Para cualquier* endpoint que retorne datos PII desencriptados, una solicitud sin token JWT válido debe recibir una respuesta HTTP 401 o 403, sin exponer ningún dato PII.
+
+**Valida: Requisitos 1.5, 2.4**
+
+---
+
+### Propiedad 5: Registro de auditoría por operación PII
+
+*Para cualquier* operación de lectura o modificación de campos PII realizada por un especialista autenticado, debe existir exactamente una entrada en el log de auditoría con el UUID del especialista, la acción realizada y el timestamp de la operación.
+
+**Valida: Requisito 1.6**
+
+---
+
+### Propiedad 6: Bloqueo de cuenta por intentos fallidos
+
+*Para cualquier* cuenta de especialista, después de exactamente 5 intentos consecutivos con credenciales inválidas, el intento número 6 debe ser rechazado con un mensaje de bloqueo, independientemente de si las credenciales del intento 6 son válidas o no.
 
 **Valida: Requisito 2.2**
 
 ---
 
-### Propiedad 8: Invariante de capacidad de Taller
+### Propiedad 7: Round-trip de creación de usuario
 
-*Para cualquier* Taller con `n` alumnos asignados donde `n >= limite_usuarios`, cualquier intento adicional de asignación debe ser rechazado, y el número de alumnos asignados al Taller debe permanecer en `n`.
+*Para cualquier* conjunto de datos de usuario válidos (incluyendo información personal, médica y de apoderado si aplica), crear el usuario y luego consultarlo por su UUID debe retornar todos los campos originales con sus valores correctos, y la edad calculada debe ser igual a `floor((fecha_actual - fecha_nacimiento) / 365.25)`.
 
-**Valida: Requisito 2.4**
-
----
-
-### Propiedad 9: Validación de categoría para asignación y consultas
-
-*Para cualquier* Persona con categoría exclusivamente `"Paciente"`, el sistema debe rechazar su asignación a un Taller. *Para cualquier* Persona con categoría exclusivamente `"Alumno"`, el sistema debe rechazar el agendamiento de una Consulta. Solo las categorías correctas (`"Alumno"` o `"Paciente y Alumno"` para talleres; `"Paciente"` o `"Paciente y Alumno"` para consultas) deben ser aceptadas.
-
-**Valida: Requisitos 2.3, 2.5, 3.1**
+**Valida: Requisitos 3.1, 3.2, 3.3, 3.4**
 
 ---
 
-### Propiedad 10: Invariante de separación PII — el Motor ML nunca accede a PII
+### Propiedad 8: Validación de menores de edad
 
-*Para cualquier* ejecución del Motor ML, el conjunto de datos de entrada debe contener únicamente campos `ID_Persona` y datos de comportamiento (fechas de sesión, estados de asistencia, estados de consulta). Ningún campo PII (nombres, apellidos, DNI, fecha de nacimiento, dirección, teléfono, email) debe estar presente en los datos accesibles por el Motor ML.
+*Para cualquier* usuario cuya fecha de nacimiento lo haga menor de 18 años, intentar completar el registro sin los datos del apoderado o sin ambos checkboxes de autorización marcados debe resultar en un error de validación que impida la creación del registro.
 
-**Valida: Requisitos 2.6, 3.5, 5.3, 7.2**
-
----
-
-### Propiedad 11: Registro de cambios de estado de Consulta
-
-*Para cualquier* cambio de estado de una Consulta, la tabla `CONSULTA_ESTADOS_LOG` debe contener una entrada con el estado anterior, el estado nuevo y una marca de tiempo correspondiente al momento del cambio.
-
-**Valida: Requisito 3.4**
+**Valida: Requisitos 3.5, 3.6**
 
 ---
 
-### Propiedad 12: Conservación de filas en ETL
+### Propiedad 9: Preservación de historial al desactivar usuario
 
-*Para cualquier* archivo cargado con `N` filas totales, la suma de `registros_insertados + registros_con_error` en el resultado del ETL debe ser igual a `N`. Ninguna fila debe perderse silenciosamente.
+*Para cualquier* usuario con historial de asistencias, consultas o scores de deserción, cambiar su estado a "inactivo" no debe eliminar ni modificar ninguno de sus registros históricos; todos deben seguir siendo accesibles mediante su UUID.
 
-**Valida: Requisito 4.4**
-
----
-
-### Propiedad 13: Estructura del resumen ETL
-
-*Para cualquier* ejecución del proceso ETL, el resultado retornado por la API debe contener los campos `registros_insertados` (entero ≥ 0), `registros_con_error` (entero ≥ 0) y `errores` (lista con detalle de cada fila fallida).
-
-**Valida: Requisito 4.5**
+**Valida: Requisito 3.7**
 
 ---
 
-### Propiedad 14: Anonimización en ETL
+### Propiedad 10: Unicidad de DNI
 
-*Para cualquier* registro procesado por el ETL, el dato almacenado en las tablas de comportamiento (`PERSONAS`, `ASISTENCIAS`) debe estar identificado únicamente por `ID_Persona` (UUID), sin que ningún campo PII en texto plano sea accesible desde esas tablas.
+*Para cualquier* DNI ya registrado en el sistema, intentar registrar un nuevo usuario con ese mismo DNI debe retornar un error de duplicado y no crear ningún registro adicional.
+
+**Valida: Requisito 3.8**
+
+---
+
+### Propiedad 11: Invariante de capacidad de taller
+
+*Para cualquier* taller con límite de participantes N, intentar inscribir al participante número N+1 debe ser rechazado con un error, independientemente de los datos del usuario a inscribir.
+
+**Valida: Requisito 4.2**
+
+---
+
+### Propiedad 12: Validación de categoría para inscripción en taller
+
+*Para cualquier* usuario con categoría exclusivamente "Paciente" (no "Alumno" ni "Ambos"), intentar inscribirlo en cualquier taller debe ser rechazado con un error de validación de categoría.
 
 **Valida: Requisito 4.3**
 
 ---
 
-### Propiedad 15: Rango del Score de Deserción
+### Propiedad 13: Ventana de edición de taller
 
-*Para cualquier* `ID_Persona` con historial de asistencia suficiente, el `Score_Deserción` generado por el Motor ML debe ser un valor numérico en el intervalo cerrado `[0, 100]`.
+*Para cualquier* taller, si su fecha de inicio es posterior a la fecha actual, la edición de sus datos debe ser permitida. Si su fecha de inicio es igual o anterior a la fecha actual, la edición debe ser rechazada.
 
-**Valida: Requisito 5.2**
-
----
-
-### Propiedad 16: Round-trip de resultados ML (estructura y persistencia)
-
-*Para cualquier* resultado JSON válido generado por el Motor ML con campos `id_persona` y `score_desercion`, serializar ese resultado, almacenarlo en la BD y luego recuperarlo vía API debe producir un objeto con valores numéricamente equivalentes al original, sin pérdida de precisión.
-
-**Valida: Requisitos 5.4, 5.5, 9.1, 9.2, 9.3**
+**Valida: Requisito 4.4**
 
 ---
 
-### Propiedad 17: Manejo de datos insuficientes en ML (caso borde)
+### Propiedad 14: Validación de inscripción previa para asistencia
 
-*Para cualquier* `ID_Persona` sin historial de asistencia o con historial insuficiente para calcular un score, el Motor ML debe producir un resultado con `score = null` y `estado_calculo = "datos_insuficientes"`, sin lanzar una excepción ni omitir el registro del resultado.
+*Para cualquier* par (usuario, taller) donde el usuario no está inscrito en el taller, intentar registrar cualquier estado de asistencia debe ser rechazado con un error de validación.
 
-**Valida: Requisito 5.8**
-
----
-
-### Propiedad 18: Corrección del filtro del reporte de deserción
-
-*Para cualquier* umbral configurable `T` y cualquier conjunto de scores almacenados, el reporte de deserción debe contener exactamente las Personas cuyo `Score_Deserción > T`, ni más ni menos, y cada entrada debe incluir nombre, categoría y score.
-
-**Valida: Requisitos 6.1, 6.2**
+**Valida: Requisitos 5.1, 5.2**
 
 ---
 
-### Propiedad 19: Persistencia del log de WhatsApp
+### Propiedad 15: Round-trip de registro de asistencia
 
-*Para cualquier* mensaje de WhatsApp enviado (exitoso o fallido), la tabla `LOG_WHATSAPP` debe contener una entrada con `id_persona`, `estado_entrega`, `mensaje` y `enviado_at` (marca de tiempo).
+*Para cualquier* registro de asistencia con estado válido (Presente, Tardanza o Ausente), crearlo y luego consultarlo debe retornar el UUID del usuario, el identificador del taller, la fecha de sesión y el estado exactamente como fueron enviados. Intentar guardar un estado inválido debe ser rechazado.
 
-**Valida: Requisito 6.7**
-
----
-
-### Propiedad 20: Notificación de fallo de WhatsApp
-
-*Para cualquier* intento de envío de WhatsApp que resulte en error, la respuesta de la API debe contener un campo de error con el motivo del fallo, y el Frontend debe mostrar ese mensaje sin romper la interfaz.
-
-**Valida: Requisito 6.8**
+**Valida: Requisitos 5.3, 5.4**
 
 ---
 
-### Propiedad 21: Encriptación de PII en reposo
+### Propiedad 16: Ventana de modificación de asistencia
 
-*Para cualquier* Persona registrada, leer directamente las columnas PII de la tabla `PERSONAS_PII` en la base de datos (sin pasar por la capa de desencriptación de la API) debe retornar valores binarios encriptados, no texto plano legible.
+*Para cualquier* registro de asistencia, si fue creado hace menos de 24 horas, la modificación debe ser permitida. Si fue creado hace 24 horas o más, la modificación debe ser rechazada.
 
-**Valida: Requisito 7.1**
-
----
-
-### Propiedad 22: Control de acceso a PII
-
-*Para cualquier* solicitud a un endpoint que retorne datos PII desencriptados, si el token de autenticación no corresponde a un usuario con rol `Especialista`, la API debe retornar un error `403 Forbidden` y no incluir ningún campo PII en la respuesta.
-
-**Valida: Requisito 7.3**
+**Valida: Requisito 5.5**
 
 ---
 
-### Propiedad 23: Log de auditoría por acceso no autorizado
+### Propiedad 17: Validación temporal de consultas
 
-*Para cualquier* intento de acceso a la tabla `PERSONAS_PII` por un proceso o usuario sin los permisos correspondientes, la tabla `LOG_AUDITORIA` debe registrar una entrada con la acción, el origen y la marca de tiempo del intento.
+*Para cualquier* consulta donde la hora de fin es anterior a la hora de inicio, el sistema debe rechazar el guardado con un error de validación, sin crear ningún registro en la base de datos.
+
+**Valida: Requisito 6.4**
+
+---
+
+### Propiedad 18: Registro de historial de cambios de estado de consulta
+
+*Para cualquier* cambio de estado de una consulta, debe existir exactamente una entrada en el historial de la consulta con el estado anterior, el estado nuevo y el timestamp del cambio.
+
+**Valida: Requisito 6.3**
+
+---
+
+### Propiedad 19: Consistencia de filtros
+
+*Para cualquier* filtro aplicado (por estado, fecha, UUID de paciente, tipo de actividad o rango de fechas) en consultas, historial o reportes, todos los registros retornados deben cumplir el criterio del filtro, y ningún registro que cumpla el criterio debe ser omitido.
+
+**Valida: Requisitos 6.5, 10.3**
+
+---
+
+### Propiedad 20: Consistencia aritmética del reporte ETL
+
+*Para cualquier* archivo procesado por el Módulo_ETL, el total de registros procesados debe ser igual a la suma de registros cargados exitosamente más registros omitidos. No puede haber registros "perdidos" en el proceso.
+
+**Valida: Requisitos 7.1, 7.2, 7.3**
+
+---
+
+### Propiedad 21: Rechazo de formatos inválidos en ETL
+
+*Para cualquier* archivo cuya extensión no sea `.xls` ni `.csv`, el sistema debe rechazarlo antes de intentar procesarlo, retornando un error que indique los formatos aceptados.
 
 **Valida: Requisito 7.5**
 
 ---
 
-### Propiedad 24: Orden cronológico e integridad del historial
+### Propiedad 22: Rango válido del Score de Deserción
 
-*Para cualquier* Persona, la vista de historial recuperada por la API debe contener todos sus registros de asistencias y consultas ordenados cronológicamente (ascendente por fecha), y los filtros aplicados (rango de fechas, categoría, nombre de taller) deben retornar únicamente registros que cumplan todos los criterios simultáneamente.
+*Para cualquier* conjunto de datos de asistencia procesado por el Módulo_ML, el Score_de_Deserción generado para cada usuario debe ser un número en el rango cerrado [0, 100].
 
-**Valida: Requisitos 8.1, 8.3, 8.4**
-
----
-
-### Propiedad 25: Corrección de métricas de deserción por Taller
-
-*Para cualquier* Taller con `N` alumnos asignados y `D` alumnos que abandonaron, el porcentaje de deserción calculado debe ser igual a `(D / N) * 100`, con precisión de al menos dos decimales.
-
-**Valida: Requisito 8.2**
+**Valida: Requisito 8.1**
 
 ---
 
-### Propiedad 26: Round-trip ETL (serialización y lectura desde BD)
+### Propiedad 23: Round-trip de análisis ML
 
-*Para cualquier* registro válido procesado por el ETL, serializar el registro al formato estandarizado, insertarlo en la BD y luego leerlo de vuelta debe producir un objeto con todos los campos equivalentes al original, sin pérdida ni corrupción de datos.
+*Para cualquier* ejecución del Módulo_ML, después de que el análisis concluya, consultar el historial de resultados en la base de datos debe retornar al menos una entrada por cada usuario analizado, con su UUID, Score_de_Deserción y timestamp de análisis.
 
-**Valida: Requisitos 9.4, 9.5**
+**Valida: Requisitos 8.3, 8.6**
 
 ---
 
-### Propiedad 27: Manejo de JSON malformado en Frontend
+### Propiedad 24: Filtrado por umbral en reporte de riesgo
 
-*Para cualquier* respuesta JSON recibida por el Frontend con estructura inesperada o campos obligatorios faltantes, la interfaz debe mostrar un mensaje de error descriptivo y permanecer funcional (sin crash ni estado inconsistente).
+*Para cualquier* umbral de Score_de_Deserción configurado por el especialista, todos los usuarios mostrados en el reporte de riesgo deben tener un score mayor o igual al umbral, y ningún usuario con score inferior al umbral debe aparecer en el reporte.
+
+**Valida: Requisito 9.1**
+
+---
+
+### Propiedad 25: Round-trip de envío de alertas WhatsApp
+
+*Para cualquier* lista de usuarios seleccionados para envío de alerta, después de confirmar el envío, el log de mensajes en la base de datos debe contener exactamente una entrada por cada usuario seleccionado, con su UUID, el timestamp de envío y el estado de entrega reportado por la API.
+
+**Valida: Requisitos 9.4, 9.7**
+
+---
+
+### Propiedad 26: Manejo de errores de WhatsApp API
+
+*Para cualquier* error retornado por la WhatsApp_API al intentar enviar un mensaje, el sistema debe registrar el error en la base de datos, no debe reintentar el envío automáticamente, y el error debe ser visible en la interfaz del especialista.
 
 **Valida: Requisito 9.6**
+
+---
+
+### Propiedad 27: Renderizado de plantillas con variables dinámicas
+
+*Para cualquier* plantilla de mensaje que contenga variables dinámicas (ej. `{nombre}`, `{proxima_sesion}`), al renderizarla con los datos de un usuario específico, todas las variables deben ser reemplazadas por los valores correspondientes del usuario, sin dejar ninguna variable sin reemplazar en el mensaje final.
+
+**Valida: Requisito 9.5**
+
+---
+
+### Propiedad 28: Límite de historial de scores en perfil
+
+*Para cualquier* usuario con N análisis ML registrados, la consulta de historial de scores debe retornar exactamente `min(N, 12)` entradas, correspondientes a los análisis más recientes.
+
+**Valida: Requisito 10.2**
+
+---
+
+### Propiedad 29: Ordenamiento del reporte de talleres por deserción
+
+*Para cualquier* conjunto de talleres con al menos 3 sesiones registradas, el reporte de talleres debe estar ordenado de mayor a menor tasa de deserción promedio, y ningún taller con menos de 3 sesiones debe aparecer en el reporte.
+
+**Valida: Requisitos 11.1, 11.3**
 
 ---
 
@@ -597,157 +660,138 @@ class ETLResult(BaseModel):
 
 ### Estrategia General
 
-Todos los errores son retornados por la API en un formato JSON estandarizado:
+El sistema utiliza un esquema de respuesta de error estandarizado en todos los endpoints de la API:
 
 ```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "El DNI ya está registrado en el sistema.",
-    "details": {}
+    "message": "Descripción legible del error",
+    "details": [
+      { "field": "hora_fin", "issue": "hora_fin debe ser posterior a hora_inicio" }
+    ],
+    "timestamp": "2024-01-15T10:30:00Z",
+    "request_id": "uuid-del-request"
   }
 }
 ```
 
-### Catálogo de Errores por Módulo
+### Códigos de Error por Módulo
 
-| Módulo | Código de Error | Causa | Respuesta HTTP |
+| Módulo | Código | Descripción | HTTP Status |
 |---|---|---|---|
-| Registro | `DNI_DUPLICATE` | DNI ya existe en BD | 409 Conflict |
-| Registro | `CONSENT_REQUIRED` | Consentimientos no aceptados | 422 Unprocessable Entity |
-| Registro | `INVALID_CATEGORY` | Categoría fuera del enum | 422 |
-| Talleres | `TALLER_DATE_INVALID` | Fecha fin < fecha inicio | 422 |
-| Talleres | `TALLER_FULL` | Límite de usuarios alcanzado | 409 |
-| Talleres | `INVALID_CATEGORY_TALLER` | Persona no es Alumno | 422 |
-| Consultas | `INVALID_CATEGORY_CONSULTA` | Persona no es Paciente | 422 |
-| ETL | `INVALID_FILE_FORMAT` | Formato de archivo no soportado | 400 |
-| ETL | `PARTIAL_ERROR` | Filas con errores (proceso continúa) | 207 Multi-Status |
-| ML | `ML_EXECUTION_ERROR` | Error interno del script Python | 500 |
-| WhatsApp | `WA_SEND_FAILED` | Fallo en envío de mensaje | 502 Bad Gateway |
-| Auth | `UNAUTHORIZED` | Token inválido o expirado | 401 |
-| Auth | `FORBIDDEN_PII` | Acceso a PII sin rol Especialista | 403 |
+| Auth | `INVALID_CREDENTIALS` | Credenciales incorrectas | 401 |
+| Auth | `ACCOUNT_LOCKED` | Cuenta bloqueada por intentos fallidos | 423 |
+| Auth | `TOKEN_EXPIRED` | Token JWT expirado | 401 |
+| Auth | `INSUFFICIENT_PERMISSIONS` | Rol sin permisos para el recurso | 403 |
+| Users | `DUPLICATE_DNI` | DNI ya registrado | 409 |
+| Users | `GUARDIAN_REQUIRED` | Menor de edad sin datos de apoderado | 422 |
+| Users | `AUTHORIZATION_REQUIRED` | Checkboxes de autorización no marcados | 422 |
+| Workshops | `CAPACITY_EXCEEDED` | Taller lleno | 409 |
+| Workshops | `INVALID_CATEGORY` | Usuario no tiene categoría Alumno | 422 |
+| Workshops | `WORKSHOP_STARTED` | No se puede editar taller ya iniciado | 409 |
+| Attendance | `NOT_ENROLLED` | Usuario no inscrito en el taller | 422 |
+| Attendance | `MODIFICATION_WINDOW_EXPIRED` | Han pasado más de 24h del registro | 409 |
+| Attendance | `INVALID_STATUS` | Estado de asistencia no válido | 422 |
+| Consultations | `INVALID_TIME_RANGE` | hora_fin anterior a hora_inicio | 422 |
+| ETL | `INVALID_FILE_FORMAT` | Formato de archivo no aceptado | 415 |
+| ETL | `PROCESSING_ERROR` | Error durante el procesamiento ETL | 500 |
+| ML | `INSUFFICIENT_DATA` | Datos insuficientes para análisis | 422 |
+| Alerts | `WHATSAPP_API_ERROR` | Error al enviar mensaje WhatsApp | 502 |
+| PII | `UNAUTHORIZED_PII_ACCESS` | Intento de acceso no autorizado a PII | 403 |
 
-### Manejo de Errores en ETL
+### Manejo de Errores en el Frontend
 
-El ETL implementa procesamiento tolerante a fallos: una fila inválida no detiene el proceso. Cada fila con error se registra en el log con:
-- Número de fila
-- Motivo del error
-- Datos originales de la fila (para revisión)
-
-El proceso retorna `207 Multi-Status` cuando hay una mezcla de éxitos y errores.
-
-### Manejo de Errores en Motor ML
-
-Si el script Python falla completamente (excepción no controlada), la API registra el error en el log de auditoría y retorna `500` al Frontend con un mensaje descriptivo. Los scores anteriores en la BD no son modificados.
-
-### Manejo de Errores en Frontend
-
-El Frontend implementa un boundary de errores global que captura respuestas inesperadas de la API y muestra un mensaje descriptivo sin romper la interfaz. Los errores de parsing JSON son capturados y presentados al usuario.
+- Notificaciones toast con **Sonner** para errores de validación y confirmaciones.
+- Pantalla de error dedicada para errores críticos (500, pérdida de conexión).
+- Reintentos automáticos con backoff exponencial para errores de red transitorios (máximo 3 intentos).
+- Los errores de WhatsApp API se muestran en un panel de estado de envío, no como toast.
 
 ---
 
 ## Estrategia de Testing
 
-### Enfoque Dual: Tests Unitarios + Tests de Propiedades
+### Enfoque Dual: Tests Unitarios + Tests Basados en Propiedades
 
-Ambos tipos son complementarios y necesarios para cobertura completa:
+El sistema requiere ambos tipos de tests de forma complementaria:
 
-- **Tests unitarios**: verifican ejemplos concretos, casos borde y condiciones de error
-- **Tests de propiedades**: verifican propiedades universales sobre rangos amplios de entradas generadas aleatoriamente
+- **Tests unitarios**: verifican ejemplos específicos, casos borde y condiciones de error.
+- **Tests de propiedades**: verifican propiedades universales sobre rangos amplios de entradas generadas aleatoriamente.
 
 ### Tests Unitarios
 
 Los tests unitarios se enfocan en:
-- Ejemplos específicos que demuestran comportamiento correcto (ej: registro exitoso con datos válidos)
-- Puntos de integración entre componentes (API ↔ BD, API ↔ ML)
-- Casos borde y condiciones de error (DNI duplicado, archivo ETL vacío, JSON malformado)
-- Verificación de esquema de BD (separación física PII / comportamiento)
 
-Evitar escribir demasiados tests unitarios para casos cubiertos por tests de propiedades.
+- Ejemplos concretos de flujos de negocio (login exitoso, creación de usuario completo).
+- Puntos de integración entre componentes (API → BD, ML → API).
+- Casos borde específicos (usuario exactamente en el límite de capacidad de un taller, token que expira en el siguiente segundo).
+- Condiciones de error con mensajes específicos.
 
-### Tests de Propiedades (Property-Based Testing)
+**Framework**: `jest` o `vitest` para el backend Node.js. `Vitest` para el frontend React.
 
-**Librería seleccionada:**
-- **Backend (Python/FastAPI):** `hypothesis` — librería estándar de PBT para Python
-- **Frontend (JavaScript/React):** `fast-check` — librería de PBT para JavaScript/TypeScript
+### Tests Basados en Propiedades (Property-Based Testing)
 
-**Configuración:**
-- Mínimo **100 iteraciones** por test de propiedad (configurado en `settings` de Hypothesis / `numRuns` de fast-check)
-- Cada test debe referenciar la propiedad del documento de diseño en un comentario
+**Librería**: `hypothesis` (Python) para el backend y módulos ML/ETL.
 
-**Formato de etiqueta:**
-```
-# Feature: mente-oasis-sistema, Propiedad {N}: {texto_de_la_propiedad}
-```
+Cada propiedad del documento debe implementarse como un test de Hypothesis con mínimo **100 iteraciones** (configurado con `@settings(max_examples=100)`).
 
-**Mapeo de Propiedades a Tests:**
-
-| Propiedad | Tipo | Librería | Descripción del Test |
-|---|---|---|---|
-| P1 | Round-trip | hypothesis | Generar PersonaCreate aleatoria → POST → GET → comparar |
-| P2 | Invariante | hypothesis | Generar fecha_nacimiento aleatoria → verificar edad calculada |
-| P3 | Error condition | hypothesis | Generar categoría/estado inválido → verificar rechazo |
-| P4 | Error condition | hypothesis | Generar registro con consentimiento=False → verificar bloqueo |
-| P5 | Invariante | hypothesis | Registrar misma Persona dos veces → verificar error en segunda |
-| P6 | Round-trip | hypothesis | Generar TallerCreate aleatorio → POST → GET → comparar |
-| P7 | Error condition | hypothesis | Generar Taller con fecha_fin < fecha_inicio → verificar rechazo |
-| P8 | Invariante | hypothesis | Llenar Taller hasta límite → intentar asignar uno más → verificar rechazo |
-| P9 | Error condition | hypothesis | Generar Persona con categoría incorrecta → intentar asignar/agendar → verificar rechazo |
-| P10 | Invariante | hypothesis | Ejecutar ML → inspeccionar datos de entrada → verificar ausencia de PII |
-| P11 | Round-trip | hypothesis | Cambiar estado de Consulta → verificar entrada en log con timestamp |
-| P12 | Invariante | hypothesis | Generar archivo con N filas (mix válidas/inválidas) → verificar suma = N |
-| P13 | Invariante | hypothesis | Ejecutar ETL → verificar estructura del resumen |
-| P14 | Invariante | hypothesis | Procesar ETL → verificar que tablas de comportamiento no contienen PII |
-| P15 | Invariante | hypothesis | Ejecutar ML con datos suficientes → verificar score ∈ [0, 100] |
-| P16 | Round-trip | hypothesis | Generar resultado ML → serializar → almacenar → recuperar → comparar |
-| P17 | Edge case | hypothesis | Ejecutar ML con ID_Persona sin historial → verificar score=null y estado="datos_insuficientes" |
-| P18 | Invariante | hypothesis | Generar scores aleatorios y umbral T → verificar reporte contiene exactamente scores > T |
-| P19 | Round-trip | hypothesis | Enviar mensaje WA → verificar entrada en LOG_WHATSAPP |
-| P20 | Error condition | hypothesis | Simular fallo WA → verificar respuesta contiene motivo de error |
-| P21 | Invariante | hypothesis | Registrar Persona → leer columnas PII directamente en BD → verificar valores binarios |
-| P22 | Error condition | hypothesis | Solicitar PII sin token Especialista → verificar 403 |
-| P23 | Invariante | hypothesis | Simular acceso no autorizado a PERSONAS_PII → verificar entrada en LOG_AUDITORIA |
-| P24 | Invariante | hypothesis | Generar historial aleatorio → verificar orden cronológico y corrección de filtros |
-| P25 | Invariante | hypothesis | Generar datos de Taller con N alumnos y D deserciones → verificar porcentaje = D/N*100 |
-| P26 | Round-trip | hypothesis | Generar registro ETL → serializar → insertar en BD → leer → comparar |
-| P27 | Error condition | fast-check | Generar JSON malformado → verificar mensaje de error sin crash |
-
-**Ejemplo de test de propiedad (Python/hypothesis):**
+Cada test debe incluir un comentario de trazabilidad:
 
 ```python
-from hypothesis import given, settings
-import hypothesis.strategies as st
-
-# Feature: mente-oasis-sistema, Propiedad 15: Score de Deserción en rango [0, 100]
-@given(id_persona=st.uuids(), asistencias=st.lists(st.builds(AsistenciaFactory), min_size=5))
+# Feature: mente-oasis-sistema, Propiedad 1: Round-trip de encriptación PII
 @settings(max_examples=100)
-def test_score_range_invariant(id_persona, asistencias):
-    score_result = motor_ml.calcular_score(id_persona, asistencias)
-    assert score_result.estado_calculo == "calculado"
-    assert 0 <= score_result.score <= 100
+@given(st.text(min_size=1, max_size=200))
+def test_pii_encryption_roundtrip(pii_value):
+    encrypted = encrypt_pii(pii_value)
+    assert encrypted != pii_value.encode()
+    assert decrypt_pii(encrypted) == pii_value
 ```
 
-**Ejemplo de test de propiedad (JavaScript/fast-check):**
+### Mapeo de Propiedades a Tests
 
-```typescript
-// Feature: mente-oasis-sistema, Propiedad 27: JSON malformado no rompe la interfaz
-import fc from "fast-check";
+| Propiedad | Tipo | Módulo a testear |
+|---|---|---|
+| P1: Round-trip encriptación PII | property | `core/security.py` |
+| P2: Unicidad de UUID | property | `services/users.py` |
+| P3: Anonimización ML/ETL | property | `ml/desertion_model.py`, `etl/processor.py` |
+| P4: Denegación sin autenticación | property | `api/` (middleware JWT) |
+| P5: Registro de auditoría | property | `core/audit.py` |
+| P6: Bloqueo por intentos fallidos | property | `services/auth.py` |
+| P7: Round-trip creación usuario | property | `services/users.py` |
+| P8: Validación menores de edad | property | `schemas/users.py` |
+| P9: Preservación historial al desactivar | property | `services/users.py` |
+| P10: Unicidad DNI | property | `services/users.py` |
+| P11: Invariante capacidad taller | property | `services/workshops.py` |
+| P12: Validación categoría inscripción | property | `services/workshops.py` |
+| P13: Ventana edición taller | property | `services/workshops.py` |
+| P14: Validación inscripción previa | property | `services/attendance.py` |
+| P15: Round-trip asistencia | property | `services/attendance.py` |
+| P16: Ventana modificación asistencia | property | `services/attendance.py` |
+| P17: Validación temporal consultas | property | `schemas/consultations.py` |
+| P18: Historial cambios de estado | property | `services/consultations.py` |
+| P19: Consistencia de filtros | property | `services/consultations.py`, `services/users.py` |
+| P20: Consistencia aritmética ETL | property | `etl/processor.py` |
+| P21: Rechazo formatos inválidos ETL | property | `etl/processor.py` |
+| P22: Rango score deserción [0,100] | property | `ml/desertion_model.py` |
+| P23: Round-trip análisis ML | property | `ml/desertion_model.py` |
+| P24: Filtrado por umbral reporte | property | `services/alerts.py` |
+| P25: Round-trip envío alertas | property | `services/alerts.py` |
+| P26: Manejo errores WhatsApp API | property | `services/alerts.py` |
+| P27: Renderizado plantillas | property | `services/alerts.py` |
+| P28: Límite historial scores | property | `services/users.py` |
+| P29: Ordenamiento reporte talleres | property | `services/workshops.py` |
 
-test("malformed JSON shows error without crash", () => {
-  fc.assert(
-    fc.property(fc.anything(), (malformedData) => {
-      const result = parseApiResponse(malformedData);
-      expect(result.hasError).toBe(true);
-      expect(result.errorMessage).toBeTruthy();
-      expect(result.interfaceBroken).toBe(false);
-    }),
-    { numRuns: 100 }
-  );
-});
-```
+### Tests de Integración
 
-### Cobertura de Tests
+- Flujo completo: registro de usuario → inscripción en taller → registro de asistencias → ejecución ML → generación de reporte → envío de alerta WhatsApp (mock).
+- Flujo ETL: subida de archivo .csv → procesamiento → verificación de registros en BD → verificación de anonimización.
+- Flujo de autenticación: login → acceso a recurso protegido → expiración de token → redirección.
 
-- Cada Propiedad de Corrección (P1–P27) debe ser implementada por **exactamente un test de propiedad**
-- Los tests unitarios complementan cubriendo ejemplos concretos e integraciones
-- Los tests de seguridad (P21, P22, P23) requieren un entorno de BD de prueba con datos reales encriptados
+### Cobertura Mínima Esperada
+
+- Backend (Node.js + servicios): 80% de cobertura de líneas.
+- Módulo ML: 90% de cobertura de líneas (crítico para corrección del score).
+- Módulo ETL: 85% de cobertura de líneas.
+- Frontend: tests de componentes para formularios críticos (registro de usuario, asistencias, envío de alertas).
+
+

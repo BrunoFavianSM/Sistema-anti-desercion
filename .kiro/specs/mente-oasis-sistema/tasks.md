@@ -1,264 +1,269 @@
-# Plan de Implementación: Sistema Mente Oasis
+﻿# Plan de Implementación: Mente Oasis Sistema
 
 ## Descripción General
 
-Implementación incremental del sistema completo: base de datos SQL Server, API FastAPI (Python), frontend ReactJS + TailwindCSS, motor ML Python y sistema de alertas WhatsApp. Cada tarea construye sobre la anterior, terminando con la integración completa del pipeline.
+Implementación incremental de la plataforma "Mente Oasis" usando Node.js (JavaScript) en el backend, ReactJS + TailwindCSS en el frontend, PostgreSQL como base de datos y scikit-learn para el módulo ML. Cada tarea construye sobre la anterior, terminando con la integración completa de todos los componentes.
 
 ## Tareas
 
-- [ ] 1. Configurar estructura del proyecto y base de datos
-  - Crear estructura de directorios: `backend/`, `frontend/`, `ml/`, `etl/`
-  - Definir y ejecutar scripts SQL para crear las tablas en SQL Server:
-    - `personas_pii` (PII encriptado: nombres, apellidos, DNI, fecha_nacimiento, dirección, teléfono, email)
-    - `personas` (id_persona UUID, categoria, estado, genero, condicion, fecha_inscripcion)
-    - `apoderados` (datos del apoderado vinculados a id_persona)
-    - `informacion_medica` (condicion_psicologica, medicamentos, alergias vinculados a id_persona)
-    - `consentimientos` (id_persona, tipo, aceptado, fecha)
-    - `talleres` (id_taller, nombre, fecha_inicio, fecha_fin, limite_usuarios, dias_horarios JSON)
-    - `taller_alumnos` (id_taller, id_persona)
-    - `asistencias_taller` (id_taller, id_persona, fecha_sesion, estado)
-    - `consultas` (id_consulta, id_persona, fecha, hora_inicio, hora_fin, motivo, estado, created_at)
-    - `scores_desercion` (id_persona, score, datos_insuficientes, calculado_at)
-    - `alertas_whatsapp` (id_alerta, id_persona, enviado_at, estado_entrega, mensaje)
-    - `audit_log` (evento, tabla_afectada, timestamp, detalle)
-  - Configurar separación física: `personas_pii` en esquema `pii`, resto en esquema `app`
-  - Configurar encriptación de columnas PII con SQL Server Always Encrypted o AES a nivel aplicación
-  - _Requisitos: 1.1, 7.1, 7.4_
+- [ ] 1. Configuración base del proyecto e infraestructura
+  - Crear estructura de directorios `mente-oasis/` con `backend/`, `frontend/`, `etl/`, `ml/`
+  - Crear `docker-compose.yml` con servicios: `postgres`, `backend`, `frontend`
+  - Crear `.env.example` con todas las variables de entorno requeridas (`DATABASE_URL`, `ENCRYPTION_KEY`, `JWT_SECRET`, `WHATSAPP_API_TOKEN`, etc.)
+  - Crear `backend/package.json` con dependencias: `express`, `cors`, `dotenv`, `pg`, `jsonwebtoken`, `bcryptjs`, `zod`, `axios`
+  - Crear `backend/app/core/config.py` que cargue todas las variables de entorno con `pydantic-settings`
+  - Crear `backend/src/app.js` con la instancia Express, configuración CORS y registro de routers
+  - _Requisitos: 12.1, 12.2, 12.3_
 
-- [ ] 2. Implementar backend FastAPI — núcleo y autenticación
-  - [ ] 2.1 Configurar proyecto FastAPI con dependencias
-    - Inicializar proyecto con `pyproject.toml` o `requirements.txt`
-    - Dependencias: `fastapi`, `uvicorn`, `pyodbc`/`sqlalchemy`, `cryptography`, `python-jose`, `passlib`
-    - Configurar conexión a SQL Server con SQLAlchemy
-    - Crear modelos Pydantic para todas las entidades
-    - _Requisitos: 7.3_
+- [ ] 2. Capa de seguridad: encriptación PII y JWT
+  - [ ] 2.1 Implementar módulo de encriptación AES-256
+    - Crear `backend/app/core/security.py` con funciones `encrypt_pii(value: str) -> bytes` y `decrypt_pii(encrypted: bytes) -> str` usando `cryptography.fernet.Fernet`
+    - La clave debe leerse exclusivamente de la variable de entorno `ENCRYPTION_KEY`
+    - _Requisitos: 1.1, 1.4_
+  - [ ]* 2.2 Escribir test de propiedad para round-trip de encriptación PII
+    - **Propiedad 1: Round-trip de encriptación PII**
+    - **Valida: Requisitos 1.1, 1.4**
+  - [ ] 2.3 Implementar generación y validación de tokens JWT
+    - Agregar a `security.py` las funciones `create_access_token(data: dict) -> str` y `verify_token(token: str) -> dict` con expiración de 8 horas
+    - _Requisitos: 2.1, 2.3_
+  - [ ] 2.4 Implementar log de auditoría
+    - Crear `backend/app/core/audit.py` con función `log_pii_access(db, specialist_id, accion, tabla, registro_uuid, ip)` que inserte en `AUDIT_LOG`
+    - _Requisitos: 1.6_
+  - [ ]* 2.5 Escribir test de propiedad para registro de auditoría
+    - **Propiedad 5: Registro de auditoría por operación PII**
+    - **Valida: Requisito 1.6**
 
-  - [ ] 2.2 Implementar autenticación y control de acceso por rol Especialista
-    - Endpoint `POST /auth/login` con JWT
-    - Middleware de autenticación que restringe acceso a PII desencriptado
-    - Log de auditoría para intentos de acceso no autorizados a esquema `pii`
-    - _Requisitos: 7.3, 7.5_
+- [ ] 3. Modelos de base de datos y migraciones
+  - Crear `backend/app/models/` con modelos SQLAlchemy para todas las tablas del diagrama ER: `USERS`, `GUARDIANS`, `WORKSHOPS`, `WORKSHOP_SESSIONS`, `WORKSHOP_ENROLLMENTS`, `ATTENDANCE_RECORDS`, `CONSULTATIONS`, `CONSULTATION_STATUS_HISTORY`, `ML_RESULTS`, `ALERT_MESSAGES`, `ALERT_TEMPLATES`, `AUDIT_LOG`, `SPECIALISTS`
+  - Los campos `*_enc` deben ser de tipo `LargeBinary` en SQLAlchemy
+  - Crear `backend/app/database.py` con la configuración de sesión SQLAlchemy y función `get_db()`
+  - Crear script `backend/app/init_db.py` que ejecute `Base.metadata.create_all()`
+  - _Requisitos: 1.1, 1.2, 3.3, 3.4, 4.1, 5.4, 6.1, 8.6, 9.7_
 
-  - [ ]* 2.3 Escribir tests unitarios para autenticación y control de acceso
-    - Verificar que rutas protegidas retornan 401 sin token válido
-    - Verificar que solo rol Especialista accede a endpoints PII
-    - _Requisitos: 7.3, 7.5_
+- [ ] 4. Autenticación y control de acceso
+  - [ ] 4.1 Implementar servicio de autenticación
+    - Crear `backend/app/services/auth.py` con lógica de login: verificar credenciales, contar intentos fallidos, bloquear cuenta tras 5 intentos por 15 minutos, emitir JWT
+    - Crear `backend/app/api/auth.py` con endpoints `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`
+    - Crear middleware de dependencia `get_current_specialist(token)` que valide JWT y retorne 401 si expirado
+    - _Requisitos: 2.1, 2.2, 2.3, 2.4_
+  - [ ]* 4.2 Escribir test de propiedad para bloqueo por intentos fallidos
+    - **Propiedad 6: Bloqueo de cuenta por intentos fallidos**
+    - **Valida: Requisito 2.2**
+  - [ ]* 4.3 Escribir test de propiedad para denegación de acceso sin autenticación
+    - **Propiedad 4: Denegación de acceso a PII sin autenticación**
+    - **Valida: Requisitos 1.5, 2.4**
 
-- [ ] 3. Implementar API — Registro de Personas
-  - [ ] 3.1 Implementar endpoint `POST /personas` para registro completo
-    - Generar UUID como id_persona automáticamente
-    - Calcular edad a partir de fecha_nacimiento
-    - Encriptar y almacenar PII en esquema `pii`
-    - Almacenar información médica y datos de apoderado
-    - Validar aceptación de ambos consentimientos antes de guardar
-    - Validar unicidad de DNI (retornar error descriptivo si ya existe)
-    - _Requisitos: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10_
+- [ ] 5. Checkpoint — Verificar que todos los tests pasen
+  - Asegurarse de que todos los tests implementados hasta aquí pasen. Consultar al usuario si surgen dudas.
 
-  - [ ] 3.2 Implementar endpoints `GET /personas`, `GET /personas/{id}`, `PUT /personas/{id}`
-    - Desencriptar PII solo para Especialista autenticado
-    - _Requisitos: 1.3, 1.4, 7.3_
+- [ ] 6. Gestión de usuarios (Pacientes y Alumnos)
+  - [ ] 6.1 Implementar schemas Pydantic para usuarios
+    - Crear `backend/app/schemas/users.py` con `UserCreate`, `UserUpdate`, `UserResponse` incluyendo todos los campos de los Requisitos 3.3 y 3.4
+    - Agregar validación de menores de edad: si `fecha_nacimiento` indica menos de 18 años, los campos de apoderado y ambos checkboxes son obligatorios
+    - _Requisitos: 3.3, 3.4, 3.5, 3.6_
+  - [ ]* 6.2 Escribir test de propiedad para validación de menores de edad
+    - **Propiedad 8: Validación de menores de edad**
+    - **Valida: Requisitos 3.5, 3.6**
+  - [ ] 6.3 Implementar servicio de usuarios
+    - Crear `backend/app/services/users.py` con funciones: `create_user` (genera UUID, encripta PII, verifica DNI duplicado), `get_user` (desencripta PII), `update_user`, `deactivate_user` (conserva historial), `calculate_age`
+    - _Requisitos: 1.2, 3.1, 3.2, 3.7, 3.8_
+  - [ ]* 6.4 Escribir test de propiedad para unicidad de UUID
+    - **Propiedad 2: Unicidad de UUID por usuario**
+    - **Valida: Requisitos 1.2, 3.1**
+  - [ ]* 6.5 Escribir test de propiedad para unicidad de DNI
+    - **Propiedad 10: Unicidad de DNI**
+    - **Valida: Requisito 3.8**
+  - [ ]* 6.6 Escribir test de propiedad para round-trip de creación de usuario
+    - **Propiedad 7: Round-trip de creación de usuario**
+    - **Valida: Requisitos 3.1, 3.2, 3.3, 3.4**
+  - [ ]* 6.7 Escribir test de propiedad para preservación de historial al desactivar
+    - **Propiedad 9: Preservación de historial al desactivar usuario**
+    - **Valida: Requisito 3.7**
+  - [ ] 6.8 Crear router de usuarios
+    - Crear `backend/app/api/users.py` con endpoints: `POST /users`, `GET /users/{uuid}`, `PUT /users/{uuid}`, `GET /users`, `GET /users/{uuid}/history`
+    - Todos los endpoints que retornen PII deben llamar a `audit.log_pii_access()`
+    - _Requisitos: 1.4, 1.6_
 
-  - [ ]* 3.3 Escribir tests unitarios para registro de personas
-    - Test: DNI duplicado retorna error
-    - Test: registro sin consentimientos es bloqueado
-    - Test: UUID generado es único
-    - Test: edad calculada correctamente desde fecha_nacimiento
-    - _Requisitos: 1.1, 1.8, 1.9, 1.10_
+- [ ] 7. Gestión de talleres y asistencias
+  - [ ] 7.1 Implementar servicio de talleres
+    - Crear `backend/app/services/workshops.py` con: `create_workshop`, `edit_workshop` (valida que no haya iniciado), `enroll_user` (valida categoría y capacidad), `auto_close_workshop` (cambia estado a "finalizado" si fecha_fin alcanzada)
+    - _Requisitos: 4.1, 4.2, 4.3, 4.4, 4.5_
+  - [ ]* 7.2 Escribir test de propiedad para invariante de capacidad de taller
+    - **Propiedad 11: Invariante de capacidad de taller**
+    - **Valida: Requisito 4.2**
+  - [ ]* 7.3 Escribir test de propiedad para validación de categoría en inscripción
+    - **Propiedad 12: Validación de categoría para inscripción en taller**
+    - **Valida: Requisito 4.3**
+  - [ ]* 7.4 Escribir test de propiedad para ventana de edición de taller
+    - **Propiedad 13: Ventana de edición de taller**
+    - **Valida: Requisito 4.4**
+  - [ ] 7.5 Implementar servicio de asistencias
+    - Crear `backend/app/services/attendance.py` con: `register_attendance` (valida inscripción previa, valida estado), `modify_attendance` (valida ventana de 24h)
+    - _Requisitos: 5.1, 5.2, 5.3, 5.4, 5.5_
+  - [ ]* 7.6 Escribir test de propiedad para validación de inscripción previa
+    - **Propiedad 14: Validación de inscripción previa para asistencia**
+    - **Valida: Requisitos 5.1, 5.2**
+  - [ ]* 7.7 Escribir test de propiedad para round-trip de registro de asistencia
+    - **Propiedad 15: Round-trip de registro de asistencia**
+    - **Valida: Requisitos 5.3, 5.4**
+  - [ ]* 7.8 Escribir test de propiedad para ventana de modificación de asistencia
+    - **Propiedad 16: Ventana de modificación de asistencia**
+    - **Valida: Requisito 5.5**
+  - [ ] 7.9 Crear routers de talleres y asistencias
+    - Crear `backend/app/api/workshops.py` con todos los endpoints de talleres y asistencias definidos en el diseño
+    - _Requisitos: 4.1–4.5, 5.1–5.5_
 
-- [ ] 4. Implementar API — Gestión de Talleres y Asistencias
-  - [ ] 4.1 Implementar endpoints CRUD para Talleres
-    - `POST /talleres`, `GET /talleres`, `GET /talleres/{id}`, `PUT /talleres/{id}`
-    - Validar que fecha_fin no sea anterior a fecha_inicio
-    - _Requisitos: 2.1, 2.2_
+- [ ] 8. Gestión de consultas psicológicas
+  - [ ] 8.1 Implementar servicio de consultas
+    - Crear `backend/app/services/consultations.py` con: `create_consultation` (valida hora_fin > hora_inicio), `change_status` (registra entrada en `CONSULTATION_STATUS_HISTORY`), `list_consultations` (filtros por estado, fecha, uuid_paciente)
+    - _Requisitos: 6.1, 6.2, 6.3, 6.4, 6.5_
+  - [ ]* 8.2 Escribir test de propiedad para validación temporal de consultas
+    - **Propiedad 17: Validación temporal de consultas**
+    - **Valida: Requisito 6.4**
+  - [ ]* 8.3 Escribir test de propiedad para historial de cambios de estado
+    - **Propiedad 18: Registro de historial de cambios de estado de consulta**
+    - **Valida: Requisito 6.3**
+  - [ ]* 8.4 Escribir test de propiedad para consistencia de filtros
+    - **Propiedad 19: Consistencia de filtros**
+    - **Valida: Requisitos 6.5, 10.3**
+  - [ ] 8.5 Crear router de consultas
+    - Crear `backend/app/api/consultations.py` con endpoints: `POST /consultations`, `GET /consultations`, `PUT /consultations/{id}/status`
+    - _Requisitos: 6.1–6.5_
 
-  - [ ] 4.2 Implementar endpoints para asignación de alumnos y registro de asistencias
-    - `POST /talleres/{id}/alumnos` — validar límite máximo y categoría de persona
-    - `POST /talleres/{id}/asistencias` — registrar estado (Presente/Tardanza/Ausente) por sesión
-    - Almacenar asistencias usando id_persona sin exponer PII
-    - _Requisitos: 2.3, 2.4, 2.5, 2.6_
+- [ ] 9. Checkpoint — Verificar que todos los tests pasen
+  - Asegurarse de que todos los tests implementados hasta aquí pasen. Consultar al usuario si surgen dudas.
 
-  - [ ]* 4.3 Escribir tests unitarios para talleres y asistencias
-    - Test: asignación a taller lleno retorna error
-    - Test: fecha_fin anterior a fecha_inicio retorna error de validación
-    - Test: asistencia almacenada solo con id_persona (sin PII)
-    - _Requisitos: 2.2, 2.4, 2.6_
+- [ ] 10. Módulo ETL
+  - [ ] 10.1 Implementar procesador ETL
+    - Crear `backend/etl/processor.py` con función `process_file(filepath, db)` usando `pandas` y `openpyxl`
+    - Validar extensión del archivo antes de procesar (rechazar si no es `.xls` o `.csv`)
+    - Estandarizar formatos de fecha y texto; omitir filas con campos obligatorios vacíos registrándolas en reporte de errores
+    - Anonimizar PII reemplazando por UUID antes de cualquier operación de persistencia
+    - Retornar dict con `total_procesados`, `total_cargados`, `total_omitidos`, `errores`
+    - _Requisitos: 7.1, 7.2, 7.3, 7.4, 7.5_
+  - [ ]* 10.2 Escribir test de propiedad para consistencia aritmética del reporte ETL
+    - **Propiedad 20: Consistencia aritmética del reporte ETL**
+    - **Valida: Requisitos 7.1, 7.2, 7.3**
+  - [ ]* 10.3 Escribir test de propiedad para rechazo de formatos inválidos
+    - **Propiedad 21: Rechazo de formatos inválidos en ETL**
+    - **Valida: Requisito 7.5**
+  - [ ]* 10.4 Escribir test de propiedad para anonimización en ETL
+    - **Propiedad 3: Anonimización en procesamiento ML/ETL**
+    - **Valida: Requisitos 1.3, 7.4, 8.2**
+  - [ ] 10.5 Crear router ETL
+    - Crear `backend/app/api/etl.py` con endpoints: `POST /etl/upload` (acepta multipart/form-data), `GET /etl/jobs/{job_id}`
+    - _Requisitos: 7.1–7.5_
 
-- [ ] 5. Implementar API — Registro de Consultas
-  - [ ] 5.1 Implementar endpoints CRUD para Consultas
-    - `POST /consultas`, `GET /consultas`, `GET /consultas/{id}`, `PUT /consultas/{id}`
-    - Validar que la persona tenga categoría "Paciente" o "Paciente y Alumno"
-    - Registrar cambio de estado con timestamp
-    - Almacenar usando id_persona sin exponer PII
-    - _Requisitos: 3.1, 3.2, 3.3, 3.4, 3.5_
+- [ ] 11. Módulo ML de análisis predictivo de deserción
+  - [ ] 11.1 Implementar modelo de deserción
+    - Crear `backend/ml/desertion_model.py` con función `run_analysis(db) -> list[dict]`
+    - El modelo debe operar exclusivamente sobre UUIDs y datos de asistencia (sin PII)
+    - Generar `score_desercion` en rango [0, 100] para cada usuario usando `scikit-learn` (RandomForest o similar)
+    - Persistir resultados en `ML_RESULTS` con UUID, score y timestamp
+    - Retornar JSON con resultados para envío al frontend
+    - _Requisitos: 8.1, 8.2, 8.3, 8.6_
+  - [ ]* 11.2 Escribir test de propiedad para rango válido del score de deserción
+    - **Propiedad 22: Rango válido del Score de Deserción**
+    - **Valida: Requisito 8.1**
+  - [ ]* 11.3 Escribir test de propiedad para round-trip de análisis ML
+    - **Propiedad 23: Round-trip de análisis ML**
+    - **Valida: Requisitos 8.3, 8.6**
+  - [ ] 11.4 Crear router ML con soporte de ejecución manual y automática
+    - Crear `backend/app/api/ml.py` con endpoints: `POST /ml/run`, `GET /ml/results`, `GET /ml/config`, `PUT /ml/config`
+    - Implementar scheduler (APScheduler) para ejecución automática según intervalo configurado
+    - _Requisitos: 8.4, 8.5_
 
-  - [ ]* 5.2 Escribir tests unitarios para consultas
-    - Test: cambio de estado registra timestamp
-    - Test: consulta almacenada solo con id_persona
-    - _Requisitos: 3.4, 3.5_
-
-- [ ] 6. Checkpoint — Verificar núcleo del backend
-  - Asegurarse de que todos los tests pasen. Consultar al usuario si surgen dudas.
-
-- [ ] 7. Implementar pipeline ETL
-  - [ ] 7.1 Implementar endpoint `POST /etl/upload` para recepción de archivos .xls/.csv
-    - Validar formato de archivo en la API
-    - _Requisitos: 4.1_
-
-  - [ ] 7.2 Implementar script ETL de limpieza, anonimización e inserción
-    - Limpiar y estandarizar datos del archivo
-    - Asignar id_persona (UUID) a cada registro antes de insertar
-    - Separar PII de datos de comportamiento al insertar
-    - Registrar filas con error en log sin detener el proceso
-    - Retornar resumen: registros insertados y registros con error
-    - _Requisitos: 4.2, 4.3, 4.4, 4.5_
-
-  - [ ]* 7.3 Escribir tests unitarios para el ETL
-    - Test: filas con formato inválido se registran en log y no detienen el proceso
-    - Test: PII queda separado de datos de comportamiento tras la inserción
-    - Test: resumen retornado contiene conteos correctos
-    - _Requisitos: 4.3, 4.4, 4.5_
-
-  - [ ]* 7.4 Escribir property test para round-trip ETL
-    - **Propiedad: Para todo registro válido procesado por el ETL, serializar e insertar en BD y luego leer produce un registro equivalente al original**
+- [ ] 12. Sistema de alertas y retención
+  - [ ] 12.1 Implementar servicio de alertas
+    - Crear `backend/app/services/alerts.py` con: `get_risk_report(db, threshold)` (filtra usuarios por score >= umbral, ordenado desc), `render_template(template, user_data)` (reemplaza variables dinámicas), `send_whatsapp(db, user_ids, template_id)` (llama a WhatsApp API, registra resultado, no reintenta en error)
+    - _Requisitos: 9.1, 9.4, 9.5, 9.6, 9.7_
+  - [ ]* 12.2 Escribir test de propiedad para filtrado por umbral en reporte de riesgo
+    - **Propiedad 24: Filtrado por umbral en reporte de riesgo**
+    - **Valida: Requisito 9.1**
+  - [ ]* 12.3 Escribir test de propiedad para renderizado de plantillas con variables dinámicas
+    - **Propiedad 27: Renderizado de plantillas con variables dinámicas**
     - **Valida: Requisito 9.5**
+  - [ ]* 12.4 Escribir test de propiedad para round-trip de envío de alertas
+    - **Propiedad 25: Round-trip de envío de alertas WhatsApp**
+    - **Valida: Requisitos 9.4, 9.7**
+  - [ ]* 12.5 Escribir test de propiedad para manejo de errores de WhatsApp API
+    - **Propiedad 26: Manejo de errores de WhatsApp API**
+    - **Valida: Requisito 9.6**
+  - [ ] 12.6 Crear router de alertas
+    - Crear `backend/app/api/alerts.py` con endpoints: `GET /alerts/report`, `POST /alerts/send`, `GET /alerts/templates`, `POST /alerts/templates`
+    - _Requisitos: 9.1–9.7_
 
-- [ ] 8. Implementar Motor ML — Score de Deserción
-  - [ ] 8.1 Implementar script Python `ml/score_desercion.py`
-    - Leer datos de asistencias y consultas desde SQL Server usando solo id_persona (sin PII)
-    - Calcular Score_Deserción (0–100) por id_persona basado en patrones de asistencia
-    - Manejar caso de historial insuficiente: score nulo + flag "datos_insuficientes"
-    - Generar resultado en formato JSON: `[{"id_persona": "...", "score": 85, "datos_insuficientes": false}]`
-    - _Requisitos: 5.1, 5.2, 5.3, 5.4, 5.8_
+- [ ] 13. Historial de usuarios y análisis de talleres
+  - [ ] 13.1 Implementar endpoint de historial de usuario
+    - En `services/users.py`, agregar `get_user_history(db, uuid)` que retorne asistencias, consultas y los últimos `min(N, 12)` scores ML
+    - _Requisitos: 10.1, 10.2, 10.3_
+  - [ ]* 13.2 Escribir test de propiedad para límite de historial de scores
+    - **Propiedad 28: Límite de historial de scores en perfil**
+    - **Valida: Requisito 10.2**
+  - [ ] 13.3 Implementar reporte de talleres por tasa de deserción
+    - En `services/workshops.py`, agregar `get_workshops_analytics(db, threshold)` que calcule tasa de deserción por taller (solo talleres con >= 3 sesiones), ordenado de mayor a menor
+    - Agregar `get_workshop_detail_analytics(db, workshop_id)` con detalle de asistencias y distribución de scores
+    - _Requisitos: 11.1, 11.2, 11.3_
+  - [ ]* 13.4 Escribir test de propiedad para ordenamiento del reporte de talleres
+    - **Propiedad 29: Ordenamiento del reporte de talleres por deserción**
+    - **Valida: Requisitos 11.1, 11.3**
+  - [ ] 13.5 Crear routers de analytics
+    - Agregar a `backend/app/api/workshops.py` los endpoints: `GET /workshops/analytics`, `GET /workshops/{id}/analytics`
+    - _Requisitos: 11.1–11.3_
 
-  - [ ] 8.2 Implementar endpoints API para ejecución del Motor ML
-    - `POST /ml/ejecutar` — disparo manual del motor ML
-    - `GET /ml/scores` — obtener scores almacenados
-    - `POST /ml/config-automatico` — configurar ejecución periódica (cron/scheduler)
-    - Almacenar scores en BD y exponer al frontend
-    - _Requisitos: 5.5, 5.6, 5.7_
+- [ ] 14. Checkpoint — Verificar que todos los tests del backend pasen
+  - Asegurarse de que todos los tests pasen con cobertura mínima: backend 80%, ML 90%, ETL 85%. Consultar al usuario si surgen dudas.
 
-  - [ ]* 8.3 Escribir tests unitarios para el Motor ML
-    - Test: score generado está entre 0 y 100
-    - Test: id_persona sin historial suficiente produce score nulo con flag correcto
-    - Test: resultado JSON no contiene campos PII
-    - _Requisitos: 5.2, 5.3, 5.8_
+- [ ] 15. Frontend: configuración base y autenticación
+  - Inicializar proyecto React con Vite + TailwindCSS en `frontend/`
+  - Instalar dependencias: `axios`, `react-router-dom`, `zustand`, `framer-motion`, `sonner`, `recharts`
+  - Crear `frontend/src/services/api.js` con instancia axios configurada con `baseURL` desde variable de entorno y interceptor para adjuntar JWT
+  - Crear `frontend/src/pages/Login.jsx` con formulario de autenticación que llame a `POST /auth/login` y almacene el token en Zustand
+  - Implementar redirección automática a login cuando el token expire (interceptor de respuesta 401)
+  - _Requisitos: 2.1, 2.3_
 
-  - [ ]* 8.4 Escribir property test para round-trip JSON del Motor ML
-    - **Propiedad: Para todo resultado JSON válido generado por el Motor ML, serializar y luego parsear produce un objeto equivalente al original**
-    - **Valida: Requisito 9.3**
+- [ ] 16. Frontend: gestión de usuarios
+  - Crear `frontend/src/pages/Users/` con vistas: lista de usuarios, formulario de registro/edición, perfil de usuario
+  - El formulario de registro debe mostrar campos de apoderado y checkboxes de autorización condicionalmente si el usuario es menor de edad
+  - Mostrar notificaciones toast con Sonner para errores de validación (DNI duplicado, campos faltantes, etc.)
+  - _Requisitos: 3.1–3.8_
 
-- [ ] 9. Implementar Sistema de Alertas WhatsApp
-  - [ ] 9.1 Implementar integración con WhatsApp API
-    - Servicio `whatsapp_service.py` que envía mensajes usando la API configurada
-    - Registrar cada envío en BD: id_persona, timestamp, estado_entrega
-    - Manejar errores de envío y retornar motivo del fallo
-    - _Requisitos: 6.7, 6.8_
+- [ ] 17. Frontend: gestión de talleres y asistencias
+  - Crear `frontend/src/pages/Workshops/` con vistas: lista de talleres, formulario de creación/edición, detalle de taller con lista de inscritos y registro de asistencia por sesión
+  - Deshabilitar edición de taller si ya inició; mostrar error de capacidad si taller lleno
+  - _Requisitos: 4.1–4.5, 5.1–5.5_
 
-  - [ ] 9.2 Implementar endpoints para gestión de alertas
-    - `POST /alertas/enviar` — envío manual a una persona seleccionada
-    - `POST /alertas/config-automatico` — configurar envío automático por umbral de score
-    - `GET /alertas/historial` — historial de mensajes enviados
-    - _Requisitos: 6.4, 6.5_
+- [ ] 18. Frontend: consultas psicológicas
+  - Crear `frontend/src/pages/Consultations/` con vistas: lista de consultas con filtros (estado, fecha, paciente), formulario de agendamiento, selector de estado con historial visible
+  - _Requisitos: 6.1–6.5_
 
-  - [ ]* 9.3 Escribir tests unitarios para el sistema de alertas
-    - Test: fallo de envío notifica al frontend con motivo del error
-    - Test: envío registrado en BD con timestamp e id_persona
-    - _Requisitos: 6.7, 6.8_
+- [ ] 19. Frontend: ETL, ML y alertas
+  - Crear `frontend/src/pages/ETL/` con componente de carga de archivo y tabla de resumen de resultados (procesados / cargados / omitidos)
+  - Crear `frontend/src/pages/ML/` con botón de ejecución manual, configuración de intervalo automático y tabla de últimos resultados
+  - Crear `frontend/src/pages/Alerts/` con reporte de usuarios en riesgo (configurable por umbral), selección múltiple, selector de plantilla, panel de estado de envío (no toast para errores WhatsApp)
+  - _Requisitos: 7.1–7.5, 8.1–8.6, 9.1–9.7_
 
-- [ ] 10. Checkpoint — Verificar pipeline completo backend + ML + alertas
-  - Asegurarse de que todos los tests pasen. Consultar al usuario si surgen dudas.
+- [ ] 20. Frontend: historial de usuario y análisis de talleres
+  - En el perfil de usuario, agregar sección de historial con tabs: Asistencias, Consultas, Score de Deserción
+  - Implementar gráfico de línea temporal del score de deserción con `recharts` mostrando los últimos 12 análisis
+  - Crear `frontend/src/pages/WorkshopAnalytics/` con reporte de talleres ordenado por tasa de deserción y vista de detalle por taller
+  - _Requisitos: 10.1–10.3, 11.1–11.3_
 
-- [ ] 11. Implementar Frontend ReactJS — Estructura base y autenticación
-  - [ ] 11.1 Inicializar proyecto React con Vite + TailwindCSS + Framer Motion + Sonner
-    - Configurar rutas con React Router
-    - Configurar cliente HTTP (axios o fetch) con interceptor para JWT
-    - Implementar pantalla de login y manejo de sesión
-    - _Requisitos: 7.3_
+- [ ] 21. Integración final y documentación OpenAPI
+  - Registrar todos los routers en `backend/app/main.py` y verificar que la documentación Swagger (`/docs`) esté disponible y completa
+  - Verificar que `docker-compose.yml` levante todos los servicios correctamente con un único comando
+  - Verificar que ninguna credencial o configuración esté hardcodeada en el código fuente
+  - _Requisitos: 12.1, 12.2, 12.3_
 
-  - [ ] 11.2 Implementar layout principal y navegación entre módulos
-    - Sidebar/navbar con acceso a: Personas, Talleres, Consultas, ETL, Reportes ML, Alertas
-    - _Requisitos: 6.1, 8.1_
-
-- [ ] 12. Implementar Frontend — Módulo de Registro de Personas
-  - [ ] 12.1 Implementar formulario de registro de Persona (multi-sección)
-    - Sección: Información general (todos los campos del Requisito 1.5)
-    - Sección: Información médica con toggles SI/NO y campos de descripción
-    - Sección: Datos del apoderado
-    - Sección: Consentimientos con checkboxes obligatorios
-    - Bloquear envío si algún consentimiento no está marcado, mostrar mensaje descriptivo
-    - Mostrar error si DNI ya existe
-    - _Requisitos: 1.5, 1.6, 1.7, 1.8, 1.9, 1.10_
-
-  - [ ] 12.2 Implementar listado y vista de detalle de Personas
-    - Tabla con búsqueda/filtro por nombre, categoría y estado
-    - Vista de detalle con historial de asistencias y consultas (Requisito 8.1)
-    - Filtros por rango de fechas, categoría y nombre de taller
-    - _Requisitos: 8.1, 8.3, 8.4_
-
-- [ ] 13. Implementar Frontend — Módulo de Talleres y Consultas
-  - [ ] 13.1 Implementar formulario de creación y edición de Talleres
-    - Campos: nombre, fechas, límite de usuarios, días con horarios
-    - Validación de fecha_fin > fecha_inicio en el cliente
-    - Asignación de alumnos con validación de límite y categoría
-    - Registro de asistencias por sesión (Presente/Tardanza/Ausente)
-    - _Requisitos: 2.1, 2.2, 2.3, 2.4, 2.5_
-
-  - [ ] 13.2 Implementar módulo de Consultas
-    - Formulario de agendamiento con selector de paciente, fecha, hora, motivo y estado
-    - Cambio de estado de consulta con actualización en tiempo real
-    - _Requisitos: 3.1, 3.2, 3.3_
-
-- [ ] 14. Implementar Frontend — Módulo ETL, Reportes ML y Alertas
-  - [ ] 14.1 Implementar pantalla de carga masiva ETL
-    - Componente de upload para .xls/.csv
-    - Mostrar resumen de resultado: registros insertados y errores
-    - Mostrar mensaje de error descriptivo si el JSON recibido tiene estructura inesperada
-    - _Requisitos: 4.1, 4.5, 9.6_
-
-  - [ ] 14.2 Implementar reporte de deserción y panel de alertas
-    - Tabla de personas con Score_Deserción filtrada por umbral configurable
-    - Mostrar nombre, categoría y score por persona (solo para Especialista)
-    - Botón de actualización manual del reporte
-    - Indicación visible: "El score es orientativo y no reemplaza el criterio del Especialista"
-    - Botón de envío manual de WhatsApp con editor de plantilla de mensaje
-    - Configuración de umbral y envío automático
-    - _Requisitos: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 7.6_
-
-  - [ ] 14.3 Implementar métricas de deserción por Taller
-    - Vista con porcentaje de alumnos que abandonaron cada taller
-    - _Requisitos: 8.2_
-
-  - [ ]* 14.4 Escribir tests de componentes React para parseo de JSON y manejo de errores
-    - Test: JSON con estructura inesperada muestra mensaje de error sin romper la interfaz
-    - Test: scores renderizados sin pérdida de precisión numérica
-    - _Requisitos: 9.2, 9.6_
-
-  - [ ]* 14.5 Escribir property test para round-trip JSON en el frontend
-    - **Propiedad: Para todo JSON válido recibido de la API, parsear y renderizar el score produce el mismo valor numérico sin pérdida de precisión**
-    - **Valida: Requisito 9.2**
-
-- [ ] 15. Integración final y cableado del pipeline completo
-  - [ ] 15.1 Conectar todos los módulos del frontend con los endpoints de la API
-    - Verificar flujo completo: Registro → Asistencias → ETL → ML → Reporte → WhatsApp
-    - _Requisitos: 5.5, 6.1, 9.1_
-
-  - [ ] 15.2 Verificar separación PII en todo el pipeline
-    - Confirmar que Motor ML y ETL nunca acceden a esquema `pii`
-    - Confirmar que logs de auditoría registran intentos de acceso no autorizados
-    - _Requisitos: 7.2, 7.4, 7.5_
-
-  - [ ]* 15.3 Escribir tests de integración end-to-end
-    - Test: flujo completo registro → score → alerta sin exponer PII al ML
-    - Test: round-trip serialización API → frontend preserva datos
-    - _Requisitos: 9.1, 9.3, 9.5_
-
-- [ ] 16. Checkpoint final — Asegurarse de que todos los tests pasen
-  - Verificar cobertura de todos los requisitos. Consultar al usuario si surgen dudas.
+- [ ] 22. Checkpoint final — Verificar integración completa
+  - Asegurarse de que todos los tests pasen, la documentación OpenAPI esté disponible y el sistema levante correctamente con Docker Compose. Consultar al usuario si surgen dudas.
 
 ## Notas
 
 - Las tareas marcadas con `*` son opcionales y pueden omitirse para un MVP más rápido
 - Cada tarea referencia requisitos específicos para trazabilidad
-- El Motor ML opera exclusivamente sobre `id_persona` — nunca sobre PII
-- El despliegue inicial es local; la arquitectura debe ser agnóstica a infraestructura para facilitar migración futura a AWS
-- Los property tests validan propiedades universales de round-trip y consistencia de datos
+- Los tests de propiedades usan `hypothesis` con `@settings(max_examples=100)`
+- Los tests de propiedades deben incluir el comentario: `# Feature: mente-oasis-sistema, Propiedad N: [Título]`
+- El módulo ML y ETL nunca deben recibir campos PII; solo UUIDs y datos de comportamiento
+
+

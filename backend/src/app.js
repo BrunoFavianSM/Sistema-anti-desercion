@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -17,7 +17,7 @@ app.post("/auth/login", async (req, res) => {
   try {
     const { correo, clave } = req.body || {};
     if (!correo || !clave) {
-      return res.status(400).json({ error: "Correo y contrase�a son obligatorios." });
+      return res.status(400).json({ error: "Correo y contraseña son obligatorios." });
     }
 
     const { rows } = await pool.query(
@@ -26,12 +26,12 @@ app.post("/auth/login", async (req, res) => {
     );
     const usuario = rows[0];
     if (!usuario || !usuario.activo) {
-      return res.status(401).json({ error: "Credenciales inv�lidas." });
+      return res.status(401).json({ error: "Credenciales inválidas." });
     }
 
     const valido = await bcrypt.compare(clave, usuario.password_hash);
     if (!valido) {
-      return res.status(401).json({ error: "Credenciales inv�lidas." });
+      return res.status(401).json({ error: "Credenciales inválidas." });
     }
 
     const token = jwt.sign(
@@ -49,7 +49,7 @@ app.post("/auth/login", async (req, res) => {
     });
   } catch (error) {
     console.error("Error en /auth/login:", error);
-    return res.status(500).json({ error: "No se pudo iniciar sesi�n." });
+    return res.status(500).json({ error: "No se pudo iniciar sesión." });
   }
 });
 
@@ -85,3 +85,4 @@ app.get("/api/usuarios/:id", async (req, res) => {
 });
 
 export default app;
+

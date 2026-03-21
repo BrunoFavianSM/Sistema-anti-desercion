@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { useAutenticacion } from "../estado/usoAutenticacion.js";
 
 export const esModoSimulado =
@@ -29,3 +29,4 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+

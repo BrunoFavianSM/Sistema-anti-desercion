@@ -14,7 +14,7 @@ function Login() {
   const manejarEnvio = async (event) => {
     event.preventDefault();
     if (!correo || !clave) {
-      toast.error("Completa correo y contraseña.");
+      toast.error("Completa correo y contraseÃ±a.");
       return;
     }
     setCargando(true);
@@ -40,7 +40,7 @@ function Login() {
       });
       navigate("/");
     } catch (error) {
-      toast.error("No se pudo iniciar sesión. Verifica tus credenciales.");
+      toast.error("No se pudo iniciar sesiÃ³n. Verifica tus credenciales.");
     } finally {
       setCargando(false);
     }
@@ -58,12 +58,12 @@ function Login() {
               Ingreso seguro para seguimiento integral
             </h1>
             <p className="mt-4 text-sm text-[var(--texto-secundario)]">
-              Centraliza la gestión de estudiantes, talleres y alertas con trazabilidad y datos protegidos.
+              Centraliza la gestiÃ³n de estudiantes, talleres y alertas con trazabilidad y datos protegidos.
             </p>
           </div>
           <div className="mt-8 rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-6 text-sm text-[var(--texto-secundario)]">
             <p className="font-semibold text-[var(--texto)]">Acceso recomendado</p>
-            <p className="mt-2">Usa tu correo institucional y la clave asignada por el área de soporte.</p>
+            <p className="mt-2">Usa tu correo institucional y la clave asignada por el Ã¡rea de soporte.</p>
             <p className="mt-2 text-xs">Modo simulado: {esModoSimulado ? "activado" : "desactivado"}</p>
           </div>
         </div>
@@ -79,11 +79,11 @@ function Login() {
             />
           </div>
           <div>
-            <label className="text-sm font-semibold text-[var(--texto)]">Contraseña</label>
+            <label className="text-sm font-semibold text-[var(--texto)]">ContraseÃ±a</label>
             <input
               className="campo-texto foco-visible mt-2"
               type="password"
-              placeholder="••••••••"
+              placeholder="Tu contraseÃ±a"
               value={clave}
               onChange={(event) => setClave(event.target.value)}
             />
@@ -92,7 +92,7 @@ function Login() {
             {cargando ? "Ingresando..." : "Ingresar"}
           </button>
           <p className="text-xs text-[var(--texto-secundario)]">
-            ¿Problemas para ingresar? Contacta a soporte de Mente Oasis.
+            Â¿Problemas para ingresar? Contacta a soporte de Mente Oasis.
           </p>
         </form>
       </div>

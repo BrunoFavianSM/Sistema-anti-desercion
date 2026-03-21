@@ -1,4 +1,4 @@
-import { useState } from "react";
+ï»¿import { useState } from "react";
 
 function ListaConsultas() {
   const [estado] = useState("todos");
@@ -9,7 +9,7 @@ function ListaConsultas() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Consultas</p>
-            <h2 className="mt-2 text-2xl font-semibold text-[var(--texto)]">Agenda clínica</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-[var(--texto)]">Agenda clÃ­nica</h2>
           </div>
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
@@ -18,7 +18,7 @@ function ListaConsultas() {
           </select>
         </div>
         <div className="mt-6 rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4 text-sm text-[var(--texto-secundario)]">
-          Este módulo aún no tiene datos reales conectados.
+          Este mÃ³dulo aÃºn no tiene datos reales conectados.
         </div>
       </section>
     </div>
@@ -26,3 +26,4 @@ function ListaConsultas() {
 }
 
 export default ListaConsultas;
+

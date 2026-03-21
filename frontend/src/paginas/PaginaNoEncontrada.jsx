@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 
 function PaginaNoEncontrada() {
   return (
@@ -6,7 +6,7 @@ function PaginaNoEncontrada() {
       <div className="max-w-xl rounded-[28px] border border-[var(--borde)] bg-[var(--superficie)] p-10 text-center sombra-suave">
         <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Error 404</p>
         <h1 className="mt-4 text-3xl font-semibold text-[var(--texto)]">
-          No encontramos esta secci�n
+          No encontramos esta sección
         </h1>
         <p className="mt-4 text-sm text-[var(--texto-secundario)]">
           Revisa la ruta o vuelve al panel principal para continuar.
@@ -20,3 +20,4 @@ function PaginaNoEncontrada() {
 }
 
 export default PaginaNoEncontrada;
+

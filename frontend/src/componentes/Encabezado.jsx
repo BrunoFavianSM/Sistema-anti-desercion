@@ -15,12 +15,8 @@ function Encabezado({ titulo }) {
     <header className="border-b border-[var(--borde)] bg-[var(--superficie)] px-6 py-6 lg:px-10">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">
-            Módulo operativo
-          </p>
-          <h2 className="text-3xl font-semibold text-[var(--texto)]">
-            {titulo}
-          </h2>
+          <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">MÃ³dulo operativo</p>
+          <h2 className="text-3xl font-semibold text-[var(--texto)]">{titulo}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="hidden items-center gap-2 lg:flex">
@@ -39,10 +35,10 @@ function Encabezado({ titulo }) {
             type="button"
             onClick={cerrarSesion}
           >
-            Cerrar sesión
+            Cerrar sesiÃ³n
           </button>
           <div className="rounded-full border border-[var(--borde)] bg-[var(--superficie-oscura)] px-4 py-2 text-sm font-semibold text-[var(--texto)]">
-            {especialista?.nombre || "Especialista"}
+            {especialista?.nombre || "Administrador"}
           </div>
         </div>
       </div>

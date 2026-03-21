@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+﻿import { NavLink } from "react-router-dom";
 
 const enlaces = [
   { ruta: "/", nombre: "Panel" },
@@ -29,3 +29,4 @@ function BarraMovil() {
 }
 
 export default BarraMovil;
+

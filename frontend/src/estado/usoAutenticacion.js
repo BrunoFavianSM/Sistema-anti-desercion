@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 
 const tokenInicial = localStorage.getItem("token_sesion");
 const especialistaInicial = localStorage.getItem("especialista_sesion");
@@ -17,3 +17,4 @@ export const useAutenticacion = create((set) => ({
     set({ token: "", especialista: null });
   },
 }));
+

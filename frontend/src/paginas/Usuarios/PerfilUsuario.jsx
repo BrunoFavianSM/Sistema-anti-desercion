@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+ï»¿import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../servicios/api.js";
 import { formatearFechaLarga } from "../../utilidades/formatos.js";
@@ -73,13 +73,13 @@ function PerfilUsuario() {
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4">
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Género</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">GÃ©nero</p>
             <p className="mt-2 text-2xl font-semibold text-[var(--texto)]">
               {usuario.genero || "-"}
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4">
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Condición</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">CondiciÃ³n</p>
             <p className="mt-2 text-2xl font-semibold text-[var(--texto)]">
               {usuario.condicion || "No"}
             </p>
@@ -97,13 +97,13 @@ function PerfilUsuario() {
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4">
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Fecha de inscripción</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Fecha de inscripciÃ³n</p>
             <p className="mt-2 text-sm text-[var(--texto)]">
               {usuario.fecha_inscripcion ? formatearFechaLarga(usuario.fecha_inscripcion) : "No registrada"}
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4">
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Dirección</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">DirecciÃ³n</p>
             <p className="mt-2 text-sm text-[var(--texto)]">
               {usuario.direccion || "No registrada"}
             </p>
@@ -111,7 +111,7 @@ function PerfilUsuario() {
           <div className="rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4">
             <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Contacto</p>
             <p className="mt-2 text-sm text-[var(--texto)]">
-              {usuario.telefono || "Sin teléfono"}
+              {usuario.telefono || "Sin telÃ©fono"}
             </p>
             <p className="text-xs text-[var(--texto-secundario)]">
               {usuario.email || "Sin correo"}
@@ -124,3 +124,4 @@ function PerfilUsuario() {
 }
 
 export default PerfilUsuario;
+

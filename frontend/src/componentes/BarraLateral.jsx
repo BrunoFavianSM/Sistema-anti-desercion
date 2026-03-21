@@ -8,19 +8,16 @@ const enlaces = [
   { ruta: "/etl", nombre: "ETL" },
   { ruta: "/ml", nombre: "Modelo ML" },
   { ruta: "/alertas", nombre: "Alertas" },
-  { ruta: "/analitica-talleres", nombre: "Analítica" },
+  { ruta: "/analitica-talleres", nombre: "AnalÃ­tica" },
 ];
 
 function BarraLateral() {
   return (
     <aside className="hidden w-72 flex-col border-r border-[var(--borde)] bg-[var(--superficie)] px-6 py-8 lg:flex">
       <div className="mb-10">
-        <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">
-          Mente Oasis
-        </p>
-        <h1 className="text-2xl font-semibold text-[var(--texto)]">
-          Sistema anti-deserción
-        </h1>
+        <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Mente Oasis</p>
+        <h1 className="text-2xl font-semibold text-[var(--texto)]">Sistema anti-deserciÃ³n</h1>
+        <p className="mt-2 text-xs text-[var(--texto-secundario)]">AdministraciÃ³n acadÃ©mica</p>
       </div>
       <nav className="flex flex-1 flex-col gap-2">
         {enlaces.map((enlace) => (
@@ -29,23 +26,22 @@ function BarraLateral() {
             to={enlace.ruta}
             end={enlace.ruta === "/"}
             className={({ isActive }) =>
-              `rounded-xl px-4 py-3 text-sm font-semibold transition ${
+              `flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition ${
                 isActive
-                  ? "bg-[var(--primario)] text-white"
+                  ? "bg-[var(--primario)] text-white shadow"
                   : "text-[var(--texto-secundario)] hover:bg-[var(--superficie-oscura)] hover:text-[var(--texto)]"
               }`
             }
           >
-            {enlace.nombre}
+            <span>{enlace.nombre}</span>
+            <span className="text-xs text-[var(--texto-secundario)]">â€¢</span>
           </NavLink>
         ))}
       </nav>
       <div className="mt-8 rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4 text-sm text-[var(--texto-secundario)]">
         <p className="font-semibold text-[var(--texto)]">Estado general</p>
-        <p className="mt-2">
-          Última sincronización: hoy 08:30
-        </p>
-        <p className="mt-1">Alertas críticas: 2</p>
+        <p className="mt-2">Ãšltima sincronizaciÃ³n: hoy 08:30</p>
+        <p className="mt-1">Alertas crÃ­ticas: 2</p>
       </div>
     </aside>
   );

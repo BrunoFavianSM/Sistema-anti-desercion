@@ -168,3 +168,4 @@ La implementación de este sistema permitirá a **Mente Oasis** pasar de una ges
 > **Nota de Implementación:** El despliegue inicial es **LOCAL**. La migración a la nube (AWS) es una fase posterior; por lo tanto, el sistema debe ser agnóstico a la infraestructura (fácil de migrar).
 
 
+

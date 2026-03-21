@@ -1,8 +1,8 @@
-import { toast } from "sonner";
+ï»¿import { toast } from "sonner";
 
 function PanelAlertas() {
   const enviarAlertas = () => {
-    toast.message("Este módulo se conectará cuando el servicio de alertas esté listo.");
+    toast.message("Este mÃ³dulo se conectarÃ¡ cuando el servicio de alertas estÃ¡ listo.");
   };
 
   return (
@@ -18,12 +18,12 @@ function PanelAlertas() {
           </button>
         </div>
         <div className="mt-6 rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4 text-sm text-[var(--texto-secundario)]">
-          Este módulo aún no tiene datos reales conectados.
+          Este mÃ³dulo aÃºn no tiene datos reales conectados.
         </div>
       </section>
 
       <section className="rounded-[28px] border border-[var(--borde)] bg-[var(--superficie)] p-6 sombra-suave">
-        <h3 className="text-xl font-semibold text-[var(--texto)]">Estado de envío</h3>
+        <h3 className="text-xl font-semibold text-[var(--texto)]">Estado de envÃ­o</h3>
         <div className="mt-4 rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4 text-sm text-[var(--texto-secundario)]">
           Sin registros recientes.
         </div>
@@ -33,3 +33,4 @@ function PanelAlertas() {
 }
 
 export default PanelAlertas;
+

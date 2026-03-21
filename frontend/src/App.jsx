@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+﻿import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import LayoutGeneral from "./componentes/LayoutGeneral.jsx";
 import Inicio from "./paginas/Inicio.jsx";
@@ -77,3 +77,4 @@ function App() {
 }
 
 export default App;
+

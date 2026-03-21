@@ -795,3 +795,4 @@ def test_pii_encryption_roundtrip(pii_value):
 - Frontend: tests de componentes para formularios críticos (registro de usuario, asistencias, envío de alertas).
 
 
+

@@ -5,23 +5,23 @@ import Encabezado from "./Encabezado.jsx";
 
 const titulosPorRuta = {
   "/": "Panel general",
-  "/usuarios": "Gesti髇 de usuarios",
+  "/usuarios": "Gesti贸n de usuarios",
   "/talleres": "Talleres y asistencias",
-  "/consultas": "Consultas psicol骻icas",
+  "/consultas": "Consultas psicol贸gicas",
   "/etl": "Cargas ETL",
   "/ml": "Modelo predictivo",
-  "/alertas": "Alertas y retenci髇",
-  "/analitica-talleres": "Anal韙ica de talleres",
+  "/alertas": "Alertas y retenci贸n",
+  "/analitica-talleres": "Anal铆tica de talleres",
 };
 
 function obtenerTitulo(ruta) {
-  if (ruta.startsWith("/usuarios")) return "Gesti髇 de usuarios";
+  if (ruta.startsWith("/usuarios")) return "Gesti贸n de usuarios";
   if (ruta.startsWith("/talleres")) return "Talleres y asistencias";
-  if (ruta.startsWith("/consultas")) return "Consultas psicol骻icas";
+  if (ruta.startsWith("/consultas")) return "Consultas psicol贸gicas";
   if (ruta.startsWith("/etl")) return "Cargas ETL";
   if (ruta.startsWith("/ml")) return "Modelo predictivo";
-  if (ruta.startsWith("/alertas")) return "Alertas y retenci髇";
-  if (ruta.startsWith("/analitica-talleres")) return "Anal韙ica de talleres";
+  if (ruta.startsWith("/alertas")) return "Alertas y retenci贸n";
+  if (ruta.startsWith("/analitica-talleres")) return "Anal铆tica de talleres";
   return titulosPorRuta[ruta] || "Panel general";
 }
 

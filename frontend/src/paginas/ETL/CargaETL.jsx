@@ -1,4 +1,4 @@
-import { useState } from "react";
+Ôªøimport { useState } from "react";
 import { toast } from "sonner";
 
 function CargaETL() {
@@ -14,9 +14,9 @@ function CargaETL() {
       totalProcesados: 120,
       totalCargados: 110,
       totalOmitidos: 10,
-      errores: ["Fila 23: DNI vacÌo", "Fila 89: Fecha inv·lida"],
+      errores: ["Fila 23: DNI vac√≠o", "Fila 89: Fecha inv√°lida"],
     });
-    toast.success("Archivo procesado con Èxito");
+    toast.success("Archivo procesado con √©xito");
   };
 
   return (
@@ -73,3 +73,4 @@ function CargaETL() {
 }
 
 export default CargaETL;
+

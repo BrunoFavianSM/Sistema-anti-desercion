@@ -1,4 +1,4 @@
-import pg from "pg";
+﻿import pg from "pg";
 
 const { Pool } = pg;
 
@@ -9,3 +9,4 @@ export const pool = new Pool({
   user: process.env.DB_USER || "postgres",
   password: process.env.DB_PASSWORD || "",
 });
+

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../servicios/api.js";
+import { formatearFechaLarga } from "../../utilidades/formatos.js";
 
 function ListaUsuarios() {
   const [busqueda, setBusqueda] = useState("");
@@ -42,9 +43,7 @@ function ListaUsuarios() {
       <section className="rounded-[28px] border border-[var(--borde)] bg-[var(--superficie)] p-6 sombra-suave">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">
-              Registro
-            </p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">Registro</p>
             <h2 className="mt-2 text-2xl font-semibold text-[var(--texto)]">Usuarios cargados</h2>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -57,29 +56,31 @@ function ListaUsuarios() {
           </div>
         </div>
         <div className="mt-6 overflow-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.2em] text-[var(--texto-secundario)]">
               <tr>
                 <th className="py-3">Nombres</th>
                 <th className="py-3">Apellidos</th>
                 <th className="py-3">DNI</th>
+                <th className="py-3">Fecha de nacimiento</th>
+                <th className="py-3">Fecha de inscripci√≥n</th>
                 <th className="py-3">Edad</th>
-                <th className="py-3">GÈnero</th>
-                <th className="py-3">CondiciÛn</th>
+                <th className="py-3">G√©nero</th>
+                <th className="py-3">Condici√≥n</th>
                 <th className="py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="text-[var(--texto)]">
               {cargando && (
                 <tr>
-                  <td className="py-4" colSpan={7}>
-                    Cargando informaciÛn...
+                  <td className="py-4" colSpan={9}>
+                    Cargando informaci√≥n...
                   </td>
                 </tr>
               )}
               {!cargando && usuariosFiltrados.length === 0 && (
                 <tr>
-                  <td className="py-4" colSpan={7}>
+                  <td className="py-4" colSpan={9}>
                     No hay registros disponibles.
                   </td>
                 </tr>
@@ -90,6 +91,16 @@ function ListaUsuarios() {
                   <td className="py-4">{usuario.apellidos}</td>
                   <td className="py-4 text-[var(--texto-secundario)]">
                     {usuario.dni || "No registrado"}
+                  </td>
+                  <td className="py-4">
+                    {usuario.fecha_nacimiento
+                      ? formatearFechaLarga(usuario.fecha_nacimiento)
+                      : "No registrada"}
+                  </td>
+                  <td className="py-4">
+                    {usuario.fecha_inscripcion
+                      ? formatearFechaLarga(usuario.fecha_inscripcion)
+                      : "No registrada"}
                   </td>
                   <td className="py-4">{usuario.edad || "-"}</td>
                   <td className="py-4">{usuario.genero || "-"}</td>

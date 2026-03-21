@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+锘縤mport { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usuariosFalsos } from "../../datos/falsos.js";
@@ -64,7 +64,7 @@ function FormularioUsuario() {
       <section className="rounded-[28px] border border-[var(--borde)] bg-[var(--superficie)] p-6 sombra-suave">
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">
-            {uuid ? "Edici髇" : "Registro"}
+            {uuid ? "Edici贸n" : "Registro"}
           </p>
           <h2 className="text-2xl font-semibold text-[var(--texto)]">
             {uuid ? "Actualizar usuario" : "Nuevo usuario"}
@@ -93,14 +93,14 @@ function FormularioUsuario() {
             <input className="campo-texto mt-2" value={formulario.correo} onChange={actualizarCampo("correo")} />
           </div>
           <div>
-            <label className="text-sm font-semibold">Tel閒ono</label>
+            <label className="text-sm font-semibold">Tel茅fono</label>
             <input className="campo-texto mt-2" value={formulario.telefono} onChange={actualizarCampo("telefono")} />
           </div>
         </div>
       </section>
 
       <section className="rounded-[28px] border border-[var(--borde)] bg-[var(--superficie)] p-6 sombra-suave">
-        <h3 className="text-xl font-semibold text-[var(--texto)]">Informaci髇 de apoderado</h3>
+        <h3 className="text-xl font-semibold text-[var(--texto)]">Informaci贸n de apoderado</h3>
         <p className="mt-2 text-sm text-[var(--texto-secundario)]">
           Si el usuario es menor de edad, se requieren datos del apoderado y autorizaciones.
         </p>
@@ -114,9 +114,9 @@ function FormularioUsuario() {
             />
           </div>
           <div className="rounded-2xl border border-[var(--borde)] bg-[var(--superficie-oscura)] p-4 text-sm text-[var(--texto-secundario)]">
-            <p className="font-semibold text-[var(--texto)]">Validaci髇</p>
+            <p className="font-semibold text-[var(--texto)]">Validaci贸n</p>
             <p className="mt-2">Edad calculada: {edad || "-"}</p>
-            <p className="mt-1">Condici髇: {esMenor ? "Menor de edad" : "Mayor de edad"}</p>
+            <p className="mt-1">Condici贸n: {esMenor ? "Menor de edad" : "Mayor de edad"}</p>
           </div>
         </div>
         <div className="mt-4 flex flex-col gap-3">
@@ -127,7 +127,7 @@ function FormularioUsuario() {
               checked={formulario.autorizacionDatos}
               onChange={actualizarCampo("autorizacionDatos")}
             />
-            Autorizaci髇 para tratamiento de datos personales
+            Autorizaci贸n para tratamiento de datos personales
           </label>
           <label className="flex items-center gap-3 text-sm">
             <input
@@ -136,7 +136,7 @@ function FormularioUsuario() {
               checked={formulario.autorizacionContacto}
               onChange={actualizarCampo("autorizacionContacto")}
             />
-            Autorizaci髇 para contacto y seguimiento psicol骻ico
+            Autorizaci贸n para contacto y seguimiento psicol贸gico
           </label>
         </div>
       </section>
@@ -154,3 +154,4 @@ function FormularioUsuario() {
 }
 
 export default FormularioUsuario;
+

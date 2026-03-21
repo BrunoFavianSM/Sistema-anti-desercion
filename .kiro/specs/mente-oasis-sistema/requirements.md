@@ -1,4 +1,4 @@
-# Documento de Requisitos
+﻿# Documento de Requisitos
 
 ## Introducción
 
@@ -198,3 +198,4 @@ El sistema opera inicialmente en entorno local y está diseñado para ser agnós
 1. THE Sistema SHALL externalizar toda configuración de conexión a la Base_de_Datos, rutas de API y credenciales de servicios externos en variables de entorno, sin valores hardcodeados en el código fuente.
 2. THE Sistema SHALL incluir archivos de configuración de contenedores (Docker Compose) que permitan levantar todos los servicios del sistema en un entorno local con un único comando.
 3. THE API SHALL exponer endpoints documentados mediante OpenAPI/Swagger para facilitar la integración con cualquier infraestructura de despliegue.
+

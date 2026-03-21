@@ -1,12 +1,12 @@
-export const usuariosFalsos = [
+ï»¿export const usuariosFalsos = [
   {
     uuid: "u-10293",
-    nombre: "Valeria Núñez",
+    nombre: "Valeria NÃºÃ±ez",
     dni: "73542198",
     edad: 17,
     estado: "En seguimiento",
     riesgo: 78,
-    apoderado: "Carlos Núñez",
+    apoderado: "Carlos NÃºÃ±ez",
   },
   {
     uuid: "u-10294",
@@ -31,7 +31,7 @@ export const usuariosFalsos = [
 export const talleresFalsos = [
   {
     id: "t-301",
-    nombre: "Gestión del estrés académico",
+    nombre: "GestiÃ³n del estrÃ©s acadÃ©mico",
     categoria: "Bienestar",
     cupo: 20,
     inscritos: 18,
@@ -52,7 +52,7 @@ export const talleresFalsos = [
 export const consultasFalsas = [
   {
     id: "c-991",
-    paciente: "Valeria Núñez",
+    paciente: "Valeria NÃºÃ±ez",
     fecha: "2026-03-21",
     hora: "09:30",
     estado: "Programada",
@@ -75,7 +75,7 @@ export const alertasFalsas = [
   },
   {
     id: "a-201",
-    paciente: "Valeria Núñez",
+    paciente: "Valeria NÃºÃ±ez",
     score: 78,
     estado: "Enviado",
   },
@@ -91,7 +91,7 @@ export const resultadosMLFalsos = [
 export const analiticaTalleresFalsa = [
   {
     id: "t-301",
-    nombre: "Gestión del estrés académico",
+    nombre: "GestiÃ³n del estrÃ©s acadÃ©mico",
     tasaDesercion: 28,
     sesiones: 5,
   },
@@ -104,7 +104,8 @@ export const analiticaTalleresFalsa = [
 ];
 
 export const asistenciasFalsas = [
-  { fecha: "2026-03-05", estado: "Asistió" },
-  { fecha: "2026-03-12", estado: "Faltó" },
-  { fecha: "2026-03-19", estado: "Asistió" },
+  { fecha: "2026-03-05", estado: "AsistiÃ³" },
+  { fecha: "2026-03-12", estado: "FaltÃ³" },
+  { fecha: "2026-03-19", estado: "AsistiÃ³" },
 ];
+

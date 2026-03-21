@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -73,3 +73,4 @@ function FormularioConsulta() {
 }
 
 export default FormularioConsulta;
+

@@ -1,4 +1,4 @@
-# Sistema anti-deserción  Mente Oasis
+﻿# Sistema anti-deserción — Mente Oasis
 
 Este repositorio contiene el avance actual del sistema **Mente Oasis**, con:
 
@@ -69,16 +69,16 @@ VITE_MODO_SIMULADO=false
 
 Usuario inicial:
 - **Correo:** `admin@menteoasis.com`
-- **Contrase�a:** `admin123`
+- **Contraseña:** `admin123`
 
 ---
 
-## Carga de datos (Excel ? PostgreSQL)
+## Carga de datos (Excel → PostgreSQL)
 
 El Excel usado:
-`C:/Users/user/Downloads/Hoja de c�lculo sin t�tulo.xlsx`
+`C:/Users/user/Downloads/Hoja de cálculo sin título.xlsx`
 
-Se convirti� a CSV y se carg� en:
+Se convirtió a CSV y se cargó en:
 `data/usuarios.csv`
 
 Tabla destino:
@@ -117,17 +117,17 @@ cmd /c npm run dev
 
 ## Notas importantes
 
-- El DNI en el Excel est� vac�o en todas las filas, por eso se carga como `NULL`.
-- Los m�dulos de **talleres, consultas, alertas, ML y anal�tica** est�n preparados pero no tienen datos reales conectados a�n.
-- Todos los textos y componentes est�n en **espa�ol latino**.
+- El DNI en el Excel está vacío en todas las filas, por eso se carga como `NULL`.
+- Los módulos de **talleres, consultas, alertas, ML y analítica** están preparados pero no tienen datos reales conectados aún.
+- Todos los textos y componentes están en **español latino**.
 
 ---
 
-## Pr�ximos pasos sugeridos
+## Próximos pasos sugeridos
 
 - Conectar datos reales para talleres, consultas y alertas.
-- Crear reportes y dashboards con m�tricas reales.
-- Agregar edici�n de registros (DNI, correo, etc.).
+- Crear reportes y dashboards con métricas reales.
+- Agregar edición de registros (DNI, correo, etc.).
 
 ---
 

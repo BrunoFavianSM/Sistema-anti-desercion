@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -33,7 +33,7 @@ function FormularioTaller() {
       <section className="rounded-[28px] border border-[var(--borde)] bg-[var(--superficie)] p-6 sombra-suave">
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--texto-secundario)]">
-            {id ? "Edici�n" : "Registro"}
+            {id ? "Edición" : "Registro"}
           </p>
           <h2 className="text-2xl font-semibold text-[var(--texto)]">
             {id ? "Editar taller" : "Nuevo taller"}
@@ -45,15 +45,15 @@ function FormularioTaller() {
             <input className="campo-texto mt-2" value={formulario.nombre} onChange={actualizarCampo("nombre")} />
           </div>
           <div>
-            <label className="text-sm font-semibold">Categor�a</label>
+            <label className="text-sm font-semibold">Categoría</label>
             <select className="campo-texto mt-2" value={formulario.categoria} onChange={actualizarCampo("categoria")}>
               <option>Bienestar</option>
               <option>Habilidades</option>
-              <option>H�bitos</option>
+              <option>Hábitos</option>
             </select>
           </div>
           <div>
-            <label className="text-sm font-semibold">Cupo m�ximo</label>
+            <label className="text-sm font-semibold">Cupo máximo</label>
             <input className="campo-texto mt-2" type="number" value={formulario.cupo} onChange={actualizarCampo("cupo")} />
           </div>
           <div>
@@ -66,7 +66,7 @@ function FormularioTaller() {
           </div>
         </div>
         <div className="mt-4">
-          <label className="text-sm font-semibold">Descripci�n</label>
+          <label className="text-sm font-semibold">Descripción</label>
           <textarea
             className="campo-texto mt-2 min-h-[120px]"
             value={formulario.descripcion}
@@ -87,3 +87,4 @@ function FormularioTaller() {
 }
 
 export default FormularioTaller;
+
